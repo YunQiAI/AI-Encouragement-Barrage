@@ -1,0 +1,556 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		83A003EA2D8BD13F00EC5FC2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83A003CE2D8BD13D00EC5FC2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 83A003D52D8BD13D00EC5FC2;
+			remoteInfo = "AI-Encouragement-Barrage";
+		};
+		83A003F42D8BD13F00EC5FC2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83A003CE2D8BD13D00EC5FC2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 83A003D52D8BD13D00EC5FC2;
+			remoteInfo = "AI-Encouragement-Barrage";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		83A003D62D8BD13D00EC5FC2 /* AI-Encouragement-Barrage.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI-Encouragement-Barrage.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		83A003E92D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AI-Encouragement-BarrageTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		83A003F32D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AI-Encouragement-BarrageUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		83A003D82D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "AI-Encouragement-Barrage";
+			sourceTree = "<group>";
+		};
+		83A003EC2D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "AI-Encouragement-BarrageTests";
+			sourceTree = "<group>";
+		};
+		83A003F62D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "AI-Encouragement-BarrageUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		83A003D32D8BD13D00EC5FC2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003E62D8BD13F00EC5FC2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003F02D8BD13F00EC5FC2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		83A003CD2D8BD13D00EC5FC2 = {
+			isa = PBXGroup;
+			children = (
+				83A003D82D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */,
+				83A003EC2D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests */,
+				83A003F62D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests */,
+				83A003D72D8BD13D00EC5FC2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		83A003D72D8BD13D00EC5FC2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				83A003D62D8BD13D00EC5FC2 /* AI-Encouragement-Barrage.app */,
+				83A003E92D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests.xctest */,
+				83A003F32D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		83A003D52D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83A003FD2D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-Barrage" */;
+			buildPhases = (
+				83A003D22D8BD13D00EC5FC2 /* Sources */,
+				83A003D32D8BD13D00EC5FC2 /* Frameworks */,
+				83A003D42D8BD13D00EC5FC2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				83A003D82D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */,
+			);
+			name = "AI-Encouragement-Barrage";
+			packageProductDependencies = (
+			);
+			productName = "AI-Encouragement-Barrage";
+			productReference = 83A003D62D8BD13D00EC5FC2 /* AI-Encouragement-Barrage.app */;
+			productType = "com.apple.product-type.application";
+		};
+		83A003E82D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83A004002D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-BarrageTests" */;
+			buildPhases = (
+				83A003E52D8BD13F00EC5FC2 /* Sources */,
+				83A003E62D8BD13F00EC5FC2 /* Frameworks */,
+				83A003E72D8BD13F00EC5FC2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				83A003EB2D8BD13F00EC5FC2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				83A003EC2D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests */,
+			);
+			name = "AI-Encouragement-BarrageTests";
+			packageProductDependencies = (
+			);
+			productName = "AI-Encouragement-BarrageTests";
+			productReference = 83A003E92D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		83A003F22D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83A004032D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-BarrageUITests" */;
+			buildPhases = (
+				83A003EF2D8BD13F00EC5FC2 /* Sources */,
+				83A003F02D8BD13F00EC5FC2 /* Frameworks */,
+				83A003F12D8BD13F00EC5FC2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				83A003F52D8BD13F00EC5FC2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				83A003F62D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests */,
+			);
+			name = "AI-Encouragement-BarrageUITests";
+			packageProductDependencies = (
+			);
+			productName = "AI-Encouragement-BarrageUITests";
+			productReference = 83A003F32D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83A003CE2D8BD13D00EC5FC2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					83A003D52D8BD13D00EC5FC2 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					83A003E82D8BD13F00EC5FC2 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 83A003D52D8BD13D00EC5FC2;
+					};
+					83A003F22D8BD13F00EC5FC2 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 83A003D52D8BD13D00EC5FC2;
+					};
+				};
+			};
+			buildConfigurationList = 83A003D12D8BD13D00EC5FC2 /* Build configuration list for PBXProject "AI-Encouragement-Barrage" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 83A003CD2D8BD13D00EC5FC2;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 83A003D72D8BD13D00EC5FC2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				83A003D52D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */,
+				83A003E82D8BD13F00EC5FC2 /* AI-Encouragement-BarrageTests */,
+				83A003F22D8BD13F00EC5FC2 /* AI-Encouragement-BarrageUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		83A003D42D8BD13D00EC5FC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003E72D8BD13F00EC5FC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003F12D8BD13F00EC5FC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		83A003D22D8BD13D00EC5FC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003E52D8BD13F00EC5FC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83A003EF2D8BD13F00EC5FC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		83A003EB2D8BD13F00EC5FC2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 83A003D52D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */;
+			targetProxy = 83A003EA2D8BD13F00EC5FC2 /* PBXContainerItemProxy */;
+		};
+		83A003F52D8BD13F00EC5FC2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 83A003D52D8BD13D00EC5FC2 /* AI-Encouragement-Barrage */;
+			targetProxy = 83A003F42D8BD13F00EC5FC2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		83A003FB2D8BD13F00EC5FC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		83A003FC2D8BD13F00EC5FC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		83A003FE2D8BD13F00EC5FC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "AI-Encouragement-Barrage/AI_Encouragement_Barrage.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"AI-Encouragement-Barrage/Preview Content\"";
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-Barrage";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		83A003FF2D8BD13F00EC5FC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "AI-Encouragement-Barrage/AI_Encouragement_Barrage.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"AI-Encouragement-Barrage/Preview Content\"";
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-Barrage";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		83A004012D8BD13F00EC5FC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-BarrageTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AI-Encouragement-Barrage.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AI-Encouragement-Barrage";
+			};
+			name = Debug;
+		};
+		83A004022D8BD13F00EC5FC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-BarrageTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AI-Encouragement-Barrage.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AI-Encouragement-Barrage";
+			};
+			name = Release;
+		};
+		83A004042D8BD13F00EC5FC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-BarrageUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "AI-Encouragement-Barrage";
+			};
+			name = Debug;
+		};
+		83A004052D8BD13F00EC5FC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z87QA5VWM9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "YunQIAI.AI-Encouragement-BarrageUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "AI-Encouragement-Barrage";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		83A003D12D8BD13D00EC5FC2 /* Build configuration list for PBXProject "AI-Encouragement-Barrage" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83A003FB2D8BD13F00EC5FC2 /* Debug */,
+				83A003FC2D8BD13F00EC5FC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83A003FD2D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-Barrage" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83A003FE2D8BD13F00EC5FC2 /* Debug */,
+				83A003FF2D8BD13F00EC5FC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83A004002D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-BarrageTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83A004012D8BD13F00EC5FC2 /* Debug */,
+				83A004022D8BD13F00EC5FC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83A004032D8BD13F00EC5FC2 /* Build configuration list for PBXNativeTarget "AI-Encouragement-BarrageUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83A004042D8BD13F00EC5FC2 /* Debug */,
+				83A004052D8BD13F00EC5FC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 83A003CE2D8BD13D00EC5FC2 /* Project object */;
+}
