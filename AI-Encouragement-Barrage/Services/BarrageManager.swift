@@ -27,44 +27,20 @@ struct BarrageItem: Identifiable {
         static func random() -> Direction {
             return Bool.random() ? .leftToRight : .rightToLeft
         }
-        
-        static func fromString(_ directionString: String) -> Direction {
-            switch directionString {
-            case "leftToRight":
-                return .leftToRight
-            case "rightToLeft":
-                return .rightToLeft
-            default:
-                return .rightToLeft // Default right to left
-            }
-        }
     }
     
     static func create(text: String, screenSize: CGSize, direction: Direction, isError: Bool = false) -> BarrageItem {
         let startX: CGFloat
         
         if direction == .leftToRight {
-            startX = -200 // Start from outside left
+            startX = -200
         } else {
-            startX = screenSize.width + 200 // Start from outside right
+            startX = screenSize.width + 200
         }
         
-        // Random Y position to avoid overlap
-        // Use full screen height for Y position
         let y = CGFloat.random(in: 50...(screenSize.height - 100))
-        
-        // Random font size
         let fontSize = CGFloat.random(in: 18...28)
-        
-        // Color settings
-        let color: Color
-        if isError {
-            color = Color.red // Red for error messages
-        } else {
-            // Random color with high brightness and saturation
-            let hue = Double.random(in: 0...1)
-            color = Color(hue: hue, saturation: 0.7, brightness: 0.9)
-        }
+        let color = isError ? .red : Color(hue: Double.random(in: 0...1), saturation: 0.7, brightness: 0.9)
         
         return BarrageItem(
             text: text,
@@ -82,7 +58,7 @@ class BarrageManager: ObservableObject {
     @Published var activeBarrages: [BarrageItem] = []
     private var speed: Double = 1.0
     private var timer: Timer?
-    private var screenSize: CGSize
+    var screenSize: CGSize
     private var directionSetting: String = "rightToLeft" // Default right to left
     private var travelRange: Double = 1.0 // Default full screen
     
@@ -95,33 +71,9 @@ class BarrageManager: ObservableObject {
         timer?.invalidate()
     }
     
-    // Set barrage direction
-    func setDirection(_ direction: String) {
-        self.directionSetting = direction
-    }
-    
-    // Set barrage travel range (horizontal movement range)
-    func setTravelRange(_ range: Double) {
-        self.travelRange = range
-    }
-    
-    // Add new barrage
+    // 添加弹幕
     func addBarrage(text: String, isError: Bool = false) {
-        // Determine direction based on settings
-        let direction: BarrageItem.Direction
-        
-        switch directionSetting {
-        case "leftToRight":
-            direction = .leftToRight
-        case "rightToLeft":
-            direction = .rightToLeft
-        case "bidirectional":
-            // Random direction in bidirectional mode
-            direction = Bool.random() ? .leftToRight : .rightToLeft
-        default:
-            direction = .rightToLeft // Default right to left
-        }
-        
+        let direction: BarrageItem.Direction = .random()
         let newBarrage = BarrageItem.create(
             text: text,
             screenSize: screenSize,
@@ -132,31 +84,89 @@ class BarrageManager: ObservableObject {
         DispatchQueue.main.async {
             self.activeBarrages.append(newBarrage)
             
-            // Remove barrage after it completes its journey
-            // The time depends on the travel range and speed
-            let travelTime = (self.screenSize.width * self.travelRange + 400) / (self.speed * 3.0) * 0.03
+            let travelTime = (self.screenSize.width + 400) / (self.speed * 3.0) * 0.03
             DispatchQueue.main.asyncAfter(deadline: .now() + travelTime) {
                 self.activeBarrages.removeAll { $0.id == newBarrage.id }
             }
         }
     }
     
-    // Clear all barrages
+    // 清除所有弹幕
     func clearAllBarrages() {
         activeBarrages.removeAll()
     }
     
-    // Set barrage speed
+    // 设置弹幕速度
     func setSpeed(_ speed: Double) {
         self.speed = speed
     }
     
-    // Update screen size
+    // 设置弹幕方向
+    func setDirection(_ direction: String) {
+        self.directionSetting = direction
+    }
+    
+    // 设置弹幕显示范围
+    func setTravelRange(_ range: Double) {
+        self.travelRange = range
+    }
+    
+    // 更新屏幕大小
     func updateScreenSize(_ size: CGSize) {
         self.screenSize = size
     }
     
-    // Start animation timer
+    // 添加多条弹幕，用于处理长文本
+    func addMultipleBarrages(text: String, isError: Bool = false) {
+        // 将文本按句子分割
+        let sentences = splitTextIntoSentences(text)
+        
+        // 为每个句子创建一个弹幕
+        for sentence in sentences {
+            addBarrage(text: sentence, isError: isError)
+        }
+    }
+    
+    // 将文本分割成句子
+    func splitTextIntoSentences(_ text: String) -> [String] {
+        // 创建一个包含中英文句子结束符的字符集
+        let sentenceDelimiters = CharacterSet(charactersIn: "。！？!?.\n")
+        
+        // 使用句子结束符分割文本
+        var sentences: [String] = []
+        var currentSentence = ""
+        
+        for char in text {
+            currentSentence.append(char)
+            
+            // 如果当前字符是句子结束符，添加当前句子到结果中
+            if String(char).rangeOfCharacter(from: sentenceDelimiters) != nil {
+                if !currentSentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    sentences.append(currentSentence.trimmingCharacters(in: .whitespacesAndNewlines))
+                }
+                currentSentence = ""
+            }
+        }
+        
+        // 添加最后一个句子（如果有）
+        if !currentSentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            sentences.append(currentSentence.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        
+        return sentences
+    }
+    
+    // 处理流式响应
+    func processStreamingResponse(_ partial: String) {
+        // 分割文本
+        let sentences = splitTextIntoSentences(partial)
+        
+        // 只处理非空句子
+        for sentence in sentences where !sentence.isEmpty {
+            addBarrage(text: sentence)
+        }
+    }
+    
     private func startAnimationTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1/30, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -164,47 +174,27 @@ class BarrageManager: ObservableObject {
         }
     }
     
-    // Update barrage positions
     private func updateBarragePositions() {
         DispatchQueue.main.async {
             for i in 0..<self.activeBarrages.count {
                 var barrage = self.activeBarrages[i]
-                
-                // Update position based on direction
-                let moveDistance = self.speed * 3.0 // Base movement speed
+                let moveDistance = self.speed * 3.0
                 
                 if barrage.direction == .leftToRight {
                     barrage.position.x += moveDistance
-                    
-                    // Calculate the total travel distance based on travelRange
-                    let totalTravelDistance = self.screenSize.width * self.travelRange
-                    
-                    // Start fading out when approaching the end of travel distance
-                    if barrage.position.x > totalTravelDistance {
-                        // Calculate fade based on distance past the travel limit
-                        let distancePastLimit = barrage.position.x - totalTravelDistance
-                        let fadeRate = min(distancePastLimit / 200.0, 0.05) // Gradual fade out
-                        barrage.opacity -= fadeRate
+                    if barrage.position.x > self.screenSize.width {
+                        barrage.opacity -= 0.05
                     }
                 } else {
                     barrage.position.x -= moveDistance
-                    
-                    // Calculate the starting point for right-to-left barrages
-                    let startPoint = self.screenSize.width * (1.0 - self.travelRange)
-                    
-                    // Start fading out when approaching the end of travel distance
-                    if barrage.position.x < startPoint {
-                        // Calculate fade based on distance past the travel limit
-                        let distancePastLimit = startPoint - barrage.position.x
-                        let fadeRate = min(distancePastLimit / 200.0, 0.05) // Gradual fade out
-                        barrage.opacity -= fadeRate
+                    if barrage.position.x < 0 {
+                        barrage.opacity -= 0.05
                     }
                 }
                 
                 self.activeBarrages[i] = barrage
             }
             
-            // Remove completely transparent barrages
             self.activeBarrages.removeAll { $0.opacity <= 0 }
         }
     }

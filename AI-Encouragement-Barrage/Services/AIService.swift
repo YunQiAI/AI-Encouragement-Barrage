@@ -35,17 +35,23 @@ class AIService: ObservableObject {
     private var azureService: AzureAPIService?
     private var lmStudioService: LMStudioAPIService?
     
+    // Barrage manager reference
+    private var barrageManager: BarrageManager?
+    
     // Published properties for UI updates
     @Published var availableOllamaModels: [OllamaModel] = []
     @Published var availableLMStudioModels: [LMStudioModel] = []
     @Published var isLoadingModels: Bool = false
     @Published var modelLoadError: String? = nil
     
-    init(settings: AppSettings? = nil) {
+    init(settings: AppSettings? = nil, barrageManager: BarrageManager? = nil) {
+        self.barrageManager = barrageManager
+        
         if let settings = settings {
             self.apiProvider = settings.effectiveAPIProvider
             self.apiModelName = settings.effectiveAPIModelName
             self.apiKey = settings.effectiveAPIKey
+            self.useStreamingAPI = settings.effectiveUseStreamingAPI
             
             // Ollama specific settings
             self.ollamaServerAddress = settings.effectiveOllamaServerAddress
@@ -136,6 +142,7 @@ class AIService: ObservableObject {
         self.apiProvider = settings.effectiveAPIProvider
         self.apiModelName = settings.effectiveAPIModelName
         self.apiKey = settings.effectiveAPIKey
+        self.useStreamingAPI = settings.effectiveUseStreamingAPI
         
         // Ollama specific settings
         self.ollamaServerAddress = settings.effectiveOllamaServerAddress
@@ -386,10 +393,17 @@ class AIService: ObservableObject {
                 prompt: prompt, 
                 imageBase64: imageBase64,
                 useStreaming: useStreamingAPI,
-                streamHandler: { partial in
+                streamHandler: { [weak self] partial in
                     // 处理流式响应
-                    print("Stream partial: \(partial)")
-                    // 这里可以添加弹幕处理逻辑
+                    guard let self = self else { return }
+                    
+                    // 如果有弹幕管理器，处理流式响应
+                    if let barrageManager = self.barrageManager {
+                        barrageManager.processStreamingResponse(partial)
+                    } else {
+                        // 否则只打印
+                        print("Stream partial: \(partial)")
+                    }
                 }
             )
             
@@ -397,13 +411,27 @@ class AIService: ObservableObject {
             guard let azureService = azureService else {
                 throw AIServiceError.requestFailed
             }
-            return try await azureService.sendRequest(prompt: prompt, imageBase64: imageBase64)
+            let response = try await azureService.sendRequest(prompt: prompt, imageBase64: imageBase64)
+            
+            // 如果有弹幕管理器，处理完整响应
+            if let barrageManager = self.barrageManager {
+                barrageManager.addMultipleBarrages(text: response)
+            }
+            
+            return response
             
         case .lmStudio:
             guard let lmStudioService = lmStudioService else {
                 throw AIServiceError.requestFailed
             }
-            return try await lmStudioService.sendRequest(prompt: prompt, imageBase64: imageBase64)
+            let response = try await lmStudioService.sendRequest(prompt: prompt, imageBase64: imageBase64)
+            
+            // 如果有弹幕管理器，处理完整响应
+            if let barrageManager = self.barrageManager {
+                barrageManager.addMultipleBarrages(text: response)
+            }
+            
+            return response
             
         default:
             throw AIServiceError.unsupportedProvider(provider: apiProvider.rawValue)

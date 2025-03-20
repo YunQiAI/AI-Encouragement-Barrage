@@ -12,7 +12,7 @@ import AppKit
 // 弹幕覆盖窗口
 class BarrageOverlayWindow {
     private var window: NSWindow?
-    private var barrageManager: BarrageManager
+    var barrageManager: BarrageManager
     
     init() {
         // 获取主屏幕尺寸

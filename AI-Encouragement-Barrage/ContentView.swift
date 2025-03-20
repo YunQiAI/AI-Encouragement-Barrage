@@ -93,31 +93,38 @@ struct ContentView: View {
         let settings = appSettings.first ?? AppSettings()
         currentSettings = settings
         
-        // Initialize service components
-        screenCaptureManager = ScreenCaptureManager(captureInterval: settings.captureInterval)
-        aiService = AIService(settings: settings)
+        // Initialize barrage overlay window first
         barrageOverlayWindow = BarrageOverlayWindow()
-        speechSynthesizer = SpeechSynthesizer()
         
-        // Set custom voice if specified
-        if let voiceIdentifier = settings.voiceIdentifier {
-            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
-        }
-        
-        // Set barrage speed and direction
-        barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
-        if let direction = settings.barrageDirection {
-            barrageOverlayWindow?.setDirection(direction)
-        }
-        if let range = settings.barrageTravelRange {
-            barrageOverlayWindow?.setTravelRange(range)
-        }
-        
-        // Check screen capture permission
-        if let screenCaptureManager = screenCaptureManager {
-            if !screenCaptureManager.checkScreenCapturePermission() {
-                screenCaptureManager.requestScreenCapturePermission()
+        // Get barrage manager from overlay window
+        if let barrageManager = barrageOverlayWindow?.barrageManager {
+            // Initialize service components with barrage manager
+            screenCaptureManager = ScreenCaptureManager(captureInterval: settings.captureInterval)
+            aiService = AIService(settings: settings, barrageManager: barrageManager)
+            speechSynthesizer = SpeechSynthesizer()
+            
+            // Set custom voice if specified
+            if let voiceIdentifier = settings.voiceIdentifier {
+                speechSynthesizer?.setVoice(identifier: voiceIdentifier)
             }
+            
+            // Set barrage speed and direction
+            barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
+            if let direction = settings.barrageDirection {
+                barrageOverlayWindow?.setDirection(direction)
+            }
+            if let range = settings.barrageTravelRange {
+                barrageOverlayWindow?.setTravelRange(range)
+            }
+            
+            // Check screen capture permission
+            if let screenCaptureManager = screenCaptureManager {
+                if !screenCaptureManager.checkScreenCapturePermission() {
+                    screenCaptureManager.requestScreenCapturePermission()
+                }
+            }
+        } else {
+            print("Error: Failed to get barrage manager from overlay window")
         }
     }
     
@@ -156,6 +163,11 @@ struct ContentView: View {
         if let voiceIdentifier = settings.voiceIdentifier {
             speechSynthesizer?.setVoice(identifier: voiceIdentifier)
         }
+        
+        // Update AI service settings
+        if let barrageManager = barrageOverlayWindow?.barrageManager {
+            aiService = AIService(settings: settings, barrageManager: barrageManager)
+        }
     }
     
     // Update service configuration
@@ -178,6 +190,11 @@ struct ContentView: View {
         // Set custom voice if specified
         if let voiceIdentifier = settings.voiceIdentifier {
             speechSynthesizer?.setVoice(identifier: voiceIdentifier)
+        }
+        
+        // Update AI service settings
+        if let barrageManager = barrageOverlayWindow?.barrageManager {
+            aiService?.updateConfig(settings: settings)
         }
     }
     
@@ -209,9 +226,6 @@ struct ContentView: View {
                         
                         // Update state
                         self.appState.updateLastEncouragement(encouragement)
-                        
-                        // Show barrage
-                        self.barrageOverlayWindow?.addBarrage(text: encouragement)
                         
                         // Save to database
                         let message = EncouragementMessage(text: encouragement)
