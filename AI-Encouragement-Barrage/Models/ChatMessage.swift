@@ -15,7 +15,11 @@ final class ChatMessage {
     var text: String
     var isFromUser: Bool
     var timestamp: Date
+    var conversationID: UUID?
     var imageData: Data?
+    
+    // 新增与Conversation的关系
+    @Relationship(inverse: \Conversation.messages) var conversation: Conversation?
     
     init(text: String, isFromUser: Bool, imageData: Data? = nil) {
         self.id = UUID()

@@ -16,6 +16,9 @@ class AppState: ObservableObject {
     @Published var shouldTestBarrages: Bool = false
     @Published var barrageService: BarrageService?
     
+    // 新增属性：当前选中的会话ID
+    @Published var selectedConversationID: UUID? = nil
+    
     func toggleRunning() {
         isRunning.toggle()
     }
@@ -34,5 +37,10 @@ class AppState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.shouldTestBarrages = false
         }
+    }
+    
+    // 新增方法：选择会话
+    func selectConversation(_ id: UUID?) {
+        self.selectedConversationID = id
     }
 }

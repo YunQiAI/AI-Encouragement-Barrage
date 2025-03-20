@@ -21,22 +21,27 @@ struct ContentView: View {
     @State private var speechSynthesizer: SpeechSynthesizer?
     @State private var statusBarController: StatusBarController?
     @State private var barrageQueue: BarrageQueue?
+    @State private var dataMigrationHelper: DataMigrationHelper?
     
     // UI state
     @State private var selectedTab = 0
     @State private var testVoiceText: String = "我们很棒，不是吗？"
     @State private var showTestVoicePopup: Bool = false
     @State private var currentSettings: AppSettings = AppSettings()
+    @State private var hasMigrated: Bool = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
             // Chat interface
             if let aiService = aiService, let screenCaptureManager = screenCaptureManager {
-                ChatView(ollamaService: aiService, screenCaptureManager: screenCaptureManager)
-                    .tabItem {
-                        Label("Chat", systemImage: "bubble.left.and.bubble.right")
-                    }
-                    .tag(0)
+                ChatInterfaceView(
+                    aiService: aiService,
+                    screenCaptureManager: screenCaptureManager
+                )
+                .tabItem {
+                    Label("聊天", systemImage: "bubble.left.and.bubble.right")
+                }
+                .tag(0)
             }
             
             // Settings interface
@@ -45,15 +50,23 @@ struct ContentView: View {
                 showTestVoicePopup: $showTestVoicePopup
             )
             .tabItem {
-                Label("Settings", systemImage: "gear")
+                Label("设置", systemImage: "gear")
             }
             .tag(1)
         }
-        .frame(minWidth: 600, minHeight: 500)
+        .frame(minWidth: 800, minHeight: 600)
         .onAppear {
             initializeServices()
             setupStatusBar()
             setupNotificationObservers()
+            
+            // 执行数据迁移
+            if !hasMigrated {
+                Task {
+                    await migrateData()
+                    hasMigrated = true
+                }
+            }
         }
         .onChange(of: appState.isRunning) { _, isRunning in
             if isRunning {
@@ -100,6 +113,9 @@ struct ContentView: View {
         barrageOverlayWindow = BarrageOverlayWindow()
         speechSynthesizer = SpeechSynthesizer()
         
+        // 创建数据迁移助手
+        dataMigrationHelper = DataMigrationHelper(modelContext: modelContext)
+        
         if let barrageOverlayWindow = barrageOverlayWindow,
            let speechSynthesizer = speechSynthesizer {
             // 初始化弹幕队列
@@ -134,6 +150,10 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    private func migrateData() async {
+        await dataMigrationHelper?.migrateChatsToConversations()
     }
     
     private func setupNotificationObservers() {
@@ -246,6 +266,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [AppSettings.self, EncouragementMessage.self, ChatMessage.self], inMemory: true)
+        .modelContainer(for: [AppSettings.self, EncouragementMessage.self, ChatMessage.self, Conversation.self], inMemory: true)
         .environmentObject(AppState())
 }

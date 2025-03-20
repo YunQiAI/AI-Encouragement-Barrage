@@ -76,7 +76,8 @@ struct AI_Encouragement_BarrageApp: App {
         let schema = Schema([
             AppSettings.self,
             EncouragementMessage.self,
-            ChatMessage.self  // Add ChatMessage model
+            ChatMessage.self,
+            Conversation.self  // Add Conversation model
         ])
         
         // Try to create model container

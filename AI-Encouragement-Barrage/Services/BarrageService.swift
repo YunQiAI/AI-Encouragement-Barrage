@@ -208,20 +208,25 @@ class BarrageService: ObservableObject {
         // 创建新消息
         let message = EncouragementMessage(text: text, context: context)
         
-        // 添加到内存中的历史记录
-        messageHistory.insert(message, at: 0)
-        if messageHistory.count > 100 {
-            messageHistory.removeLast()
-        }
-        
-        // 保存到数据库
-        if let modelContext = modelContext {
-            modelContext.insert(message)
+        // 确保所有UI更新和数据库操作都在主线程上执行
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             
-            do {
-                try modelContext.save()
-            } catch {
-                print("保存消息失败: \(error.localizedDescription)")
+            // 添加到内存中的历史记录
+            self.messageHistory.insert(message, at: 0)
+            if self.messageHistory.count > 100 {
+                self.messageHistory.removeLast()
+            }
+            
+            // 保存到数据库
+            if let modelContext = self.modelContext {
+                modelContext.insert(message)
+                
+                do {
+                    try modelContext.save()
+                } catch {
+                    print("保存消息失败: \(error.localizedDescription)")
+                }
             }
         }
     }
