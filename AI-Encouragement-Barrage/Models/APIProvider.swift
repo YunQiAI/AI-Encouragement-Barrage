@@ -30,7 +30,8 @@ enum APIProvider: String, CaseIterable, Identifiable {
         case .ollama:
             return "http://localhost:8000" // Default local Ollama server
         case .azure:
-            return "https://azure.openai.com/v1" // Default Azure endpoint
+            // Azure OpenAI API doesn't have a fixed base URL, it's provided by the user
+            return "https://RESOURCE_NAME.openai.azure.com" // This is just a placeholder
         case .openai:
             return "https://api.openai.com/v1"
         case .googleGemini:

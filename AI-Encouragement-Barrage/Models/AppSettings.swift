@@ -56,8 +56,8 @@ class AppSettings {
         barrageTravelRange: Double? = 1.0,
         apiProvider: String? = "Ollama API",
         azureEndpoint: String? = "https://your-resource-name.openai.azure.com",
-        azureDeploymentName: String? = "your-deployment-name",
-        azureAPIVersion: String? = "2023-05-15",
+        azureDeploymentName: String? = "gpt-4o",
+        azureAPIVersion: String? = "2023-12-01-preview",
         ollamaServerAddress: String? = "http://127.0.0.1",
         ollamaServerPort: Int? = 11434,
         useLocalOllama: Bool? = true,
@@ -119,12 +119,12 @@ class AppSettings {
     
     // Get effective Azure deployment name
     var effectiveAzureDeploymentName: String {
-        return azureDeploymentName ?? "your-deployment-name"
+        return azureDeploymentName ?? "gpt-4o"
     }
     
     // Get effective Azure API version
     var effectiveAzureAPIVersion: String {
-        return azureAPIVersion ?? "2023-05-15"
+        return azureAPIVersion ?? "2023-12-01-preview"
     }
     
     // Get effective Ollama server address

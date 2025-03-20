@@ -59,7 +59,7 @@ class AIService: ObservableObject {
             // Azure specific settings
             self.azureEndpoint = "https://your-resource-name.openai.azure.com"
             self.azureDeploymentName = "your-deployment-name"
-            self.azureAPIVersion = "2023-05-15"
+            self.azureAPIVersion = "2023-12-01-preview" // Updated to latest version that supports gpt-4o
         }
         
         // Load available Ollama models
@@ -525,7 +525,16 @@ class AIService: ObservableObject {
     
     // Send request to Azure OpenAI API
     private func sendAzureRequest(prompt: String, imageBase64: String?) async throws -> String {
+        // Debug log
+        print("Sending request to Azure OpenAI API")
+        print("Endpoint: \(azureEndpoint)")
+        print("Deployment: \(azureDeploymentName)")
+        print("API Version: \(azureAPIVersion)")
+        print("Model: \(apiModelName)")
+        
         // Build API endpoint
+        // For Azure OpenAI API, the endpoint format is:
+        // {endpoint}/openai/deployments/{deployment-id}/chat/completions?api-version={api-version}
         let endpoint = "\(azureEndpoint)/openai/deployments/\(azureDeploymentName)/chat/completions?api-version=\(azureAPIVersion)"
         
         guard let url = URL(string: endpoint) else {
@@ -571,7 +580,7 @@ class AIService: ObservableObject {
         request.httpMethod = "POST"
         request.httpBody = jsonData
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "api-key")
+        request.addValue(apiKey, forHTTPHeaderField: "api-key") // Azure uses api-key header, not Bearer token
         
         // Send request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -581,12 +590,20 @@ class AIService: ObservableObject {
             throw AIServiceError.requestFailed
         }
         
+        // Debug log
+        print("Azure API response status code: \(httpResponse.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("Azure API response: \(responseString)")
+        }
+        
         if httpResponse.statusCode != 200 {
             // Try to parse error message
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let error = errorJson["error"] as? [String: Any],
                let errorMessage = error["message"] as? String {
                 throw AIServiceError.apiError(message: errorMessage, statusCode: httpResponse.statusCode)
+            } else if let errorString = String(data: data, encoding: .utf8) {
+                throw AIServiceError.apiError(message: errorString, statusCode: httpResponse.statusCode)
             } else {
                 throw AIServiceError.apiError(message: "Unknown error", statusCode: httpResponse.statusCode)
             }

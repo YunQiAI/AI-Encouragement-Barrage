@@ -405,14 +405,14 @@ struct APISettingsView: View {
                 }
             
             Text("Deployment Name:")
-            TextField("your-deployment-name", text: $azureDeploymentName)
+            TextField("gpt-4o", text: $azureDeploymentName)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: azureDeploymentName) { _, _ in
                     updateSettings()
                 }
             
             Text("API Version:")
-            TextField("2023-05-15", text: $azureAPIVersion)
+            TextField("2023-12-01-preview", text: $azureAPIVersion)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: azureAPIVersion) { _, _ in
                     updateSettings()
@@ -424,6 +424,10 @@ struct APISettingsView: View {
                 .onChange(of: apiKey) { _, _ in
                     updateSettings()
                 }
+                
+            Text("Note: For gpt-4o model, use API version 2023-12-01-preview")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
     
