@@ -51,6 +51,9 @@ class AppSettings {
     var apiModelName: String?
     var apiKey: String?
     
+    // 是否使用流式API
+    var useStreamingAPI: Bool?
+    
     init(
         captureInterval: Double = 20.0,
         barrageSpeed: Double = 1.0,
@@ -70,7 +73,8 @@ class AppSettings {
         lmStudioServerAddress: String? = "http://127.0.0.1",
         lmStudioServerPort: Int? = 1234,
         apiModelName: String? = "",
-        apiKey: String? = ""
+        apiKey: String? = "",
+        useStreamingAPI: Bool? = true
     ) {
         self.captureInterval = captureInterval
         self.barrageSpeed = barrageSpeed
@@ -91,6 +95,7 @@ class AppSettings {
         self.lmStudioServerPort = lmStudioServerPort
         self.apiModelName = apiModelName
         self.apiKey = apiKey
+        self.useStreamingAPI = useStreamingAPI
     }
     
     // Get effective voice identifier
@@ -168,5 +173,10 @@ class AppSettings {
     // Get effective LM Studio server port
     var effectiveLMStudioServerPort: Int {
         return lmStudioServerPort ?? 1234
+    }
+    
+    // Get effective streaming API setting
+    var effectiveUseStreamingAPI: Bool {
+        return useStreamingAPI ?? true
     }
 }

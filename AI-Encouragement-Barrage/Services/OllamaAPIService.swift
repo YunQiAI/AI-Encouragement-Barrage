@@ -117,8 +117,8 @@ class OllamaAPIService {
         }
     }
     
-    // Send request to Ollama API
-    func sendRequest(prompt: String, imageBase64: String?) async throws -> String {
+    // Send request to Ollama API with optional streaming support
+    func sendRequest(prompt: String, imageBase64: String?, useStreaming: Bool = false, streamHandler: ((String) -> Void)? = nil) async throws -> String {
         // Build API endpoint
         let baseURL: String
         if useLocalServer {
@@ -136,11 +136,11 @@ class OllamaAPIService {
         // Debug log
         print("Sending request to Ollama API with model: \(modelName)")
         
-        // Build request body
+        // Build request body, now using the provided streaming flag
         var requestBody: [String: Any] = [
             "model": modelName,
             "prompt": prompt,
-            "stream": false,
+            "stream": useStreaming,
             "options": [
                 "temperature": 0.7,
                 "top_p": 0.9
@@ -168,31 +168,67 @@ class OllamaAPIService {
             request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         
-        // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        // Check response status code
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIServiceError.requestFailed
-        }
-        
-        if httpResponse.statusCode != 200 {
-            // Try to parse error message
-            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errorMessage = errorJson["error"] as? String {
-                throw AIServiceError.apiError(message: errorMessage, statusCode: httpResponse.statusCode)
-            } else {
-                throw AIServiceError.apiError(message: "HTTP Error \(httpResponse.statusCode)", statusCode: httpResponse.statusCode)
+        if useStreaming {
+            // Streaming response: use URLSession.shared.bytes(for: request)
+            let (bytesResponse, response) = try await URLSession.shared.bytes(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                throw AIServiceError.requestFailed
             }
+            
+            var finalResponse = ""
+            var currentLine = ""
+            
+            // Process streamed response line by line
+            for try await byte in bytesResponse {
+                let scalar = UnicodeScalar(byte)
+                let char = String(scalar)
+                
+                if char == "\n" {
+                    // End of line, process the JSON
+                    if !currentLine.isEmpty {
+                        if let data = currentLine.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let response = json["response"] as? String {
+                            
+                            finalResponse += response
+                            streamHandler?(response)
+                        }
+                        currentLine = ""
+                    }
+                } else {
+                    currentLine += char
+                }
+            }
+            
+            return finalResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            // Traditional full response request
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            // Check response status code
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AIServiceError.requestFailed
+            }
+            
+            if httpResponse.statusCode != 200 {
+                // Try to parse error message
+                if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorMessage = errorJson["error"] as? String {
+                    throw AIServiceError.apiError(message: errorMessage, statusCode: httpResponse.statusCode)
+                } else {
+                    throw AIServiceError.apiError(message: "HTTP Error \(httpResponse.statusCode)", statusCode: httpResponse.statusCode)
+                }
+            }
+            
+            // Parse response
+            guard let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let responseText = jsonResponse["response"] as? String else {
+                throw AIServiceError.invalidResponse
+            }
+            
+            return responseText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        
-        // Parse response
-        guard let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let responseText = jsonResponse["response"] as? String else {
-            throw AIServiceError.invalidResponse
-        }
-        
-        return responseText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     // Format file size to human-readable string

@@ -14,6 +14,7 @@ class AIService: ObservableObject {
     private var apiProvider: APIProvider
     private var apiModelName: String
     private var apiKey: String
+    private var useStreamingAPI: Bool = true // 默认启用流式API
     
     // Ollama specific settings
     private var ollamaServerAddress: String
@@ -380,7 +381,17 @@ class AIService: ObservableObject {
             guard let ollamaService = ollamaService else {
                 throw AIServiceError.requestFailed
             }
-            return try await ollamaService.sendRequest(prompt: prompt, imageBase64: imageBase64)
+            // 使用流式API
+            return try await ollamaService.sendRequest(
+                prompt: prompt, 
+                imageBase64: imageBase64,
+                useStreaming: useStreamingAPI,
+                streamHandler: { partial in
+                    // 处理流式响应
+                    print("Stream partial: \(partial)")
+                    // 这里可以添加弹幕处理逻辑
+                }
+            )
             
         case .azure:
             guard let azureService = azureService else {
