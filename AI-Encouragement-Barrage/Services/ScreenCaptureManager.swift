@@ -11,8 +11,17 @@ import CoreGraphics
 import Combine
 import ScreenCaptureKit
 
+// 截图模式枚举
+enum CaptureMode {
+    case timer    // 使用定时器触发截图
+    case stream   // 使用ScreenCaptureKit流捕获
+}
+
 // 使用@unchecked Sendable来避免Swift 6中的Sendable错误
 class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
+    // 截图模式属性
+    private var captureMode: CaptureMode = .timer  // 默认使用定时器模式
+    
     private var captureTimer: Timer?
     private var captureInterval: TimeInterval
     private var isCapturing: Bool = false
@@ -28,9 +37,10 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
     // 新增属性：AppState引用
     private weak var appState: AppState?
     
-    init(captureInterval: TimeInterval = 20.0, appState: AppState? = nil) {
+    init(captureInterval: TimeInterval = 20.0, appState: AppState? = nil, captureMode: CaptureMode = .timer) {
         self.captureInterval = captureInterval
         self.appState = appState
+        self.captureMode = captureMode
         
         // 监听AppState中isScreenAnalysisActive的变化
         if let appState = appState {
@@ -51,8 +61,19 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         }
     }
     
+    // 设置截图模式
+    func setCaptureMode(_ mode: CaptureMode) {
+        self.captureMode = mode
+        
+        // 如果正在捕获，重新启动以应用新的模式
+        if isCapturing, let handler = captureHandler {
+            stopCapturing()
+            startCapturing(handler: handler)
+        }
+    }
+    
     func startCapturing(handler: @escaping (CGImage?) -> Void) {
-        print("【ScreenCaptureManager】开始启动截图功能")
+        print("【ScreenCaptureManager】开始启动截图功能，模式: \(captureMode == .timer ? "定时器" : "帧流")")
         guard !isCapturing else {
             print("【ScreenCaptureManager】已经在截图中，忽略此次调用")
             return
@@ -61,31 +82,42 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         self.captureHandler = handler
         self.isCapturing = true
         
-        print("【ScreenCaptureManager】设置定时器，间隔: \(captureInterval)秒")
-        // 设置定时器，定期执行截屏
-        captureTimer = Timer.scheduledTimer(withTimeInterval: captureInterval, repeats: true) { [weak self] _ in
-            guard let self = self, self.isCapturing else {
-                print("【ScreenCaptureManager】定时器触发，但已停止截图")
-                return
+        switch captureMode {
+        case .timer:
+            // 定时器模式 - 使用Timer定期触发截图
+            print("【ScreenCaptureManager】设置定时器，间隔: \(captureInterval)秒")
+            captureTimer = Timer.scheduledTimer(withTimeInterval: captureInterval, repeats: true) { [weak self] _ in
+                guard let self = self, self.isCapturing else {
+                    print("【ScreenCaptureManager】定时器触发，但已停止截图")
+                    return
+                }
+                
+                // 只有当屏幕监控激活时才执行截屏
+                if self.appState?.isScreenAnalysisActive == true {
+                    print("【ScreenCaptureManager】定时器触发截图")
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
+                        self.captureScreen()
+                    }
+                } else {
+                    print("【ScreenCaptureManager】屏幕监控未激活，跳过本次截图")
+                }
             }
             
-            // 只有当屏幕监控激活时才执行截屏
-            if self.appState?.isScreenAnalysisActive == true {
-                print("【ScreenCaptureManager】定时器触发截图")
-                Task { @MainActor [weak self] in
-                    guard let self = self else { return }
-                    self.captureScreen()
-                }
-            } else {
-                print("【ScreenCaptureManager】屏幕监控未激活，跳过本次截图")
+            // 立即执行第一次截图
+            print("【ScreenCaptureManager】准备执行首次截图")
+            Task { @MainActor in
+                print("【ScreenCaptureManager】开始执行首次截图")
+                self.captureScreen()
             }
-        }
-        
-        // 立即执行第一次截图
-        print("【ScreenCaptureManager】准备执行首次截图")
-        Task { @MainActor in
-            print("【ScreenCaptureManager】开始执行首次截图")
-            self.captureScreen()
+            
+        case .stream:
+            // 帧流模式 - 直接设置ScreenCaptureKit流
+            print("【ScreenCaptureManager】使用帧流模式，不设置定时器")
+            Task { @MainActor in
+                print("【ScreenCaptureManager】开始设置帧流")
+                self.captureScreen()
+            }
         }
     }
     
@@ -102,7 +134,7 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
     // 捕获屏幕
     @MainActor
     private func captureScreen() {
-        print("【ScreenCaptureManager】开始captureScreen")
+        print("【ScreenCaptureManager】开始captureScreen，模式: \(captureMode == .timer ? "定时器" : "帧流")")
         
         // 获取主屏幕尺寸
         guard let screen = NSScreen.main else {
@@ -114,10 +146,27 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         let rect = screen.frame
         print("【ScreenCaptureManager】屏幕尺寸: \(rect.width) x \(rect.height)")
         
-        // 检查是否已经有活跃的截图流
-        if captureStream != nil {
-            print("【ScreenCaptureManager】已存在活跃的截图流")
-            return
+        // 定时器模式下，每次都创建新的截图
+        if captureMode == .timer {
+            // 如果是定时器模式，每次都停止之前的流并创建新的
+            if captureStream != nil {
+                stopScreenCaptureStream()
+            }
+            
+            // 使用CGWindowListCreateImage捕获屏幕
+            if let cgImage = CGWindowListCreateImage(.infinite, .optionOnScreenOnly, kCGNullWindowID, [.boundsIgnoreFraming]) {
+                print("【ScreenCaptureManager】使用CGWindowListCreateImage成功捕获屏幕")
+                self.captureHandler?(cgImage)
+                return
+            } else {
+                print("【错误】CGWindowListCreateImage捕获失败，尝试使用ScreenCaptureKit")
+            }
+        } else {
+            // 帧流模式下，检查是否已经有活跃的截图流
+            if captureStream != nil {
+                print("【ScreenCaptureManager】已存在活跃的截图流")
+                return
+            }
         }
         
         // 检查权限
