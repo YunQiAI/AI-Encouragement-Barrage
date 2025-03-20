@@ -14,12 +14,9 @@ struct VoiceSettingsView: View {
     @Binding var showTestVoicePopup: Bool
     
     @State private var selectedVoiceIdentifier: String = ""
-    @State private var availableSiriVoices: [SpeechSynthesizer.SiriVoiceInfo] = []
-    @State private var speechSynthesizer = SpeechSynthesizer()
+    @State private var availableSiriVoices: [SpeechSynthesizer.VoiceInfo] = []
     @State private var isLoadingVoices: Bool = false
     @State private var showSiriVoiceSelector: Bool = false
-    @State private var searchText: String = ""
-    @State private var filteredVoices: [SpeechSynthesizer.SiriVoiceInfo] = []
     
     var body: some View {
         GroupBox(label: Text("语音设置").font(.headline)) {
@@ -34,11 +31,7 @@ struct VoiceSettingsView: View {
             }
             .padding(.vertical, 10)
             .onAppear {
-                // Initialize voice identifiers from settings
                 selectedVoiceIdentifier = settings.voiceIdentifier ?? ""
-                
-                // Load available Siri voices
-                loadSiriVoices()
             }
             .onChange(of: selectedVoiceIdentifier) { _, newValue in
                 settings.voiceIdentifier = newValue.isEmpty ? nil : newValue
@@ -55,9 +48,8 @@ struct VoiceSettingsView: View {
         VStack(alignment: .leading) {
             Text("高质量语音:")
             
-            // Show selected Siri voice or default text
             HStack {
-                if let selectedVoice = availableSiriVoices.first(where: { $0.identifier == selectedVoiceIdentifier }) {
+                if let selectedVoice = availableSiriVoices.first(where: { $0.voice.identifier == selectedVoiceIdentifier }) {
                     VStack(alignment: .leading) {
                         Text(selectedVoice.name)
                             .font(.headline)
@@ -72,23 +64,8 @@ struct VoiceSettingsView: View {
                 
                 Spacer()
                 
-                // 添加试听按钮
-                if let selectedVoice = availableSiriVoices.first(where: { $0.identifier == selectedVoiceIdentifier }) {
-                    Button(action: {
-                        speechSynthesizer.speakSample(voiceIdentifier: selectedVoice.identifier)
-                    }) {
-                        Image(systemName: "speaker.wave.2")
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                }
-                
                 Button(action: {
-                    // Load Siri voices if not already loaded
-                    if availableSiriVoices.isEmpty {
-                        loadSiriVoices()
-                    }
+                    loadSiriVoices()
                     showSiriVoiceSelector.toggle()
                 }) {
                     Text("更改")
@@ -104,7 +81,7 @@ struct VoiceSettingsView: View {
             .background(Color(.textBackgroundColor).opacity(0.1))
             .cornerRadius(8)
             
-            // Test voice button with custom text
+            // Test voice button
             Button(action: {
                 showTestVoicePopup = true
             }) {
@@ -131,74 +108,34 @@ struct VoiceSettingsView: View {
                 .font(.headline)
                 .padding()
             
-            // 搜索框
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("搜索语音", text: $searchText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: searchText) { _, _ in
-                        filterVoices()
-                    }
-            }
-            .padding(.horizontal)
-            
-            // Loading indicator or voice list
             if isLoadingVoices {
-                VStack {
-                    ProgressView()
-                    Text("加载语音中...")
-                        .foregroundColor(.secondary)
-                        .padding()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if filteredVoices.isEmpty && !searchText.isEmpty {
-                VStack {
-                    Text("没有找到匹配的语音")
-                        .foregroundColor(.secondary)
-                        .padding()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Siri voice list
-                List {
-                    ForEach(filteredVoices.isEmpty && searchText.isEmpty ? availableSiriVoices : filteredVoices) { voiceInfo in
+                List(availableSiriVoices) { voiceInfo in
+                    HStack {
                         VStack(alignment: .leading) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(voiceInfo.name)
-                                        .font(.headline)
-                                    Text(voiceInfo.language)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                if voiceInfo.identifier == selectedVoiceIdentifier {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
-                                }
-                                
-                                // Test button - 点击直接播放示例
-                                Button(action: {
-                                    speechSynthesizer.speakSample(voiceIdentifier: voiceInfo.identifier)
-                                }) {
-                                    Image(systemName: "speaker.wave.2")
-                                        .foregroundColor(.blue)
-                                }
-                                .buttonStyle(.plain)
-                            }
+                            Text(voiceInfo.name)
+                                .font(.headline)
+                            Text(voiceInfo.language)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedVoiceIdentifier = voiceInfo.identifier
+                        
+                        Spacer()
+                        
+                        if voiceInfo.voice.identifier == selectedVoiceIdentifier {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
                         }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedVoiceIdentifier = voiceInfo.voice.identifier
                     }
                 }
             }
             
-            // Action buttons
             HStack {
                 Button("取消") {
                     showSiriVoiceSelector = false
@@ -215,61 +152,16 @@ struct VoiceSettingsView: View {
             .padding()
         }
         .onAppear {
-            isLoadingVoices = true
             loadSiriVoices()
-            isLoadingVoices = false
         }
     }
     
-    // Filter voices based on search text
-    private func filterVoices() {
-        if searchText.isEmpty {
-            filteredVoices = []
-            return
-        }
-        
-        filteredVoices = availableSiriVoices.filter { voiceInfo in
-            voiceInfo.name.lowercased().contains(searchText.lowercased()) ||
-            voiceInfo.language.lowercased().contains(searchText.lowercased())
-        }
-    }
-    
-    // Load available Siri voices
+    // Load Siri voices
     private func loadSiriVoices() {
-        // 首先尝试获取Siri语音
-        let siriVoices = speechSynthesizer.getAvailableSiriVoices()
-        
-        // 如果没有找到Siri语音，获取高质量语音
-        if siriVoices.isEmpty {
-            availableSiriVoices = speechSynthesizer.getAvailablePremiumVoices()
-        } else {
-            availableSiriVoices = siriVoices
-        }
-        
-        // 打印所有找到的语音，用于调试
-        print("找到 \(availableSiriVoices.count) 个高质量语音:")
-        for voice in availableSiriVoices {
-            print("- \(voice.name) (\(voice.language)): \(voice.identifier)")
-        }
-        
-        // 如果没有选择语音或者选择的语音不在可用列表中，选择默认语音
-        if selectedVoiceIdentifier.isEmpty || !availableSiriVoices.contains(where: { $0.identifier == selectedVoiceIdentifier }) {
-            // 尝试找到中文语音
-            if let chineseVoice = availableSiriVoices.first(where: { 
-                $0.language.starts(with: "zh-") 
-            }) {
-                selectedVoiceIdentifier = chineseVoice.identifier
-            }
-            // 如果没有中文语音，使用第一个可用的语音
-            else if let firstVoice = availableSiriVoices.first {
-                selectedVoiceIdentifier = firstVoice.identifier
-            }
-        }
-    }
-    
-    // Test a specific voice
-    private func testVoice(_ identifier: String) {
-        speechSynthesizer.speakSample(voiceIdentifier: identifier)
+        isLoadingVoices = true
+        let synthesizer = SpeechSynthesizer()
+        availableSiriVoices = synthesizer.getAvailableSiriVoices()
+        isLoadingVoices = false
     }
 }
 

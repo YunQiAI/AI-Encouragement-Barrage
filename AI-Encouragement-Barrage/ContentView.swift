@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var barrageOverlayWindow: BarrageOverlayWindow?
     @State private var speechSynthesizer: SpeechSynthesizer?
     @State private var statusBarController: StatusBarController?
+    @State private var barrageQueue: BarrageQueue?
     
     // UI state
     @State private var selectedTab = 0
@@ -67,7 +68,6 @@ struct ContentView: View {
             }
         }
         .onChange(of: appSettings) { _, _ in
-            // Update service configuration when settings change
             updateServicesConfig()
         }
         .sheet(isPresented: $showTestVoicePopup) {
@@ -89,32 +89,37 @@ struct ContentView: View {
     
     // Initialize all services
     private func initializeServices() {
-        // Load settings
         let settings = appSettings.first ?? AppSettings()
         currentSettings = settings
         
-        // Initialize barrage overlay window first
         barrageOverlayWindow = BarrageOverlayWindow()
+        speechSynthesizer = SpeechSynthesizer()
         
-        // Get barrage manager from overlay window
-        if let barrageManager = barrageOverlayWindow?.barrageManager {
-            // Initialize service components with barrage manager
+        if let barrageOverlayWindow = barrageOverlayWindow,
+           let speechSynthesizer = speechSynthesizer {
+            // Initialize barrage queue
+            barrageQueue = BarrageQueue(
+                barrageWindow: barrageOverlayWindow,
+                speechSynthesizer: speechSynthesizer
+            )
+            barrageQueue?.setSpeechEnabled(settings.speechEnabled)
+            
+            // Initialize other services
             screenCaptureManager = ScreenCaptureManager(captureInterval: settings.captureInterval)
-            aiService = AIService(settings: settings, barrageManager: barrageManager)
-            speechSynthesizer = SpeechSynthesizer()
+            aiService = AIService(settings: settings, barrageManager: barrageOverlayWindow.barrageManager)
             
             // Set custom voice if specified
             if let voiceIdentifier = settings.voiceIdentifier {
-                speechSynthesizer?.setVoice(identifier: voiceIdentifier)
+                speechSynthesizer.setVoice(identifier: voiceIdentifier)
             }
             
             // Set barrage speed and direction
-            barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
+            barrageOverlayWindow.setSpeed(settings.barrageSpeed)
             if let direction = settings.barrageDirection {
-                barrageOverlayWindow?.setDirection(direction)
+                barrageOverlayWindow.setDirection(direction)
             }
             if let range = settings.barrageTravelRange {
-                barrageOverlayWindow?.setTravelRange(range)
+                barrageOverlayWindow.setTravelRange(range)
             }
             
             // Check screen capture permission
@@ -123,14 +128,10 @@ struct ContentView: View {
                     screenCaptureManager.requestScreenCapturePermission()
                 }
             }
-        } else {
-            print("Error: Failed to get barrage manager from overlay window")
         }
     }
     
-    // Set up notification observers
     private func setupNotificationObservers() {
-        // Listen for temporary settings changes from SettingsView
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("TemporarySettingsChanged"),
             object: nil,
@@ -142,43 +143,18 @@ struct ContentView: View {
         }
     }
     
-    // Apply temporary settings without saving to database
     private func applyTemporarySettings(_ settings: AppSettings) {
-        // Update current settings
         currentSettings = settings
-        
-        // Update screen capture interval
-        screenCaptureManager?.setCaptureInterval(settings.captureInterval)
-        
-        // Update barrage settings
-        barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
-        if let direction = settings.barrageDirection {
-            barrageOverlayWindow?.setDirection(direction)
-        }
-        if let range = settings.barrageTravelRange {
-            barrageOverlayWindow?.setTravelRange(range)
-        }
-        
-        // Set custom voice if specified
-        if let voiceIdentifier = settings.voiceIdentifier {
-            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
-        }
-        
-        // Update AI service settings
-        if let barrageManager = barrageOverlayWindow?.barrageManager {
-            aiService = AIService(settings: settings, barrageManager: barrageManager)
-        }
+        barrageQueue?.setSpeechEnabled(settings.speechEnabled)
+        updateServicesConfig()
     }
     
-    // Update service configuration
     private func updateServicesConfig() {
         guard let settings = appSettings.first else { return }
         currentSettings = settings
         
-        // Update screen capture interval
         screenCaptureManager?.setCaptureInterval(settings.captureInterval)
         
-        // Update barrage settings
         barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
         if let direction = settings.barrageDirection {
             barrageOverlayWindow?.setDirection(direction)
@@ -187,151 +163,79 @@ struct ContentView: View {
             barrageOverlayWindow?.setTravelRange(range)
         }
         
-        // Set custom voice if specified
         if let voiceIdentifier = settings.voiceIdentifier {
             speechSynthesizer?.setVoice(identifier: voiceIdentifier)
         }
         
-        // Update AI service settings
-        if let barrageManager = barrageOverlayWindow?.barrageManager {
-            aiService?.updateConfig(settings: settings)
-        }
+        barrageQueue?.setSpeechEnabled(settings.speechEnabled)
     }
     
-    // Set up status bar
     private func setupStatusBar() {
         DispatchQueue.main.async {
-            // Create status bar controller with just the app state
             self.statusBarController = StatusBarController(appState: self.appState)
         }
     }
     
-    // Start services
     private func startServices() {
-        // Show barrage window
         barrageOverlayWindow?.show()
         
-        // Start screen capture
         screenCaptureManager?.startCapturing { image in
             guard let image = image else { return }
             
-            // Update state
-            self.appState.setProcessing(true)
-            
-            // Analyze screenshot
             Task {
                 do {
                     if let aiService = self.aiService {
                         let encouragement = try await aiService.analyzeImage(image: image)
                         
-                        // Update state
                         self.appState.updateLastEncouragement(encouragement)
                         
-                        // Save to database
                         let message = EncouragementMessage(text: encouragement)
                         self.modelContext.insert(message)
                         
-                        // If speech is enabled, read the encouragement
-                        if let settings = self.appSettings.first, settings.speechEnabled {
-                            self.speechSynthesizer?.speak(text: encouragement)
-                        }
+                        // Split text into sentences and add to queue
+                        let sentences = encouragement.components(separatedBy: ["。", "！", "？", ".", "!", "?"])
+                            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        
+                        self.barrageQueue?.enqueueMultiple(sentences)
                     }
                 } catch {
                     print("Failed to analyze screenshot: \(error)")
                     
-                    // Show error message as barrage
-                    if let aiError = error as? AIServiceError {
-                        self.barrageOverlayWindow?.addBarrage(text: "AI analysis failed: \(aiError.errorDescription ?? "Unknown error")", isError: true)
-                    } else {
-                        self.barrageOverlayWindow?.addBarrage(text: "AI analysis failed: \(error.localizedDescription)", isError: true)
-                    }
+                    let errorMessage = (error as? AIServiceError)?.errorDescription ?? error.localizedDescription
+                    self.barrageQueue?.enqueueMultiple([errorMessage], isError: true)
                 }
                 
-                // Update state
                 self.appState.setProcessing(false)
             }
         }
     }
     
-    // Stop services
     private func stopServices() {
-        // Stop screen capture
         screenCaptureManager?.stopCapturing()
-        
-        // Stop speech
         speechSynthesizer?.stop()
-        
-        // Clear barrages
+        barrageQueue?.clear()
         barrageOverlayWindow?.clearAllBarrages()
-        
-        // Hide barrage window
         barrageOverlayWindow?.hide()
     }
     
-    // Breaking up the complex expression into simpler parts to fix compiler error
     private func sendTestBarrages() {
+        guard let barrageQueue = barrageQueue else { return }
         barrageOverlayWindow?.show()
         
-        // Define test messages in Chinese
-        let testBarrages1 = [
+        let testMessages = [
             "你的代码看起来很优雅！继续加油！",
-            "你是解决问题的高手！"
-        ]
-        
-        let testBarrages2 = [
+            "你是解决问题的高手！",
             "这个设计非常出色，继续努力！",
-            "看到你的进步真是鼓舞人心！"
-        ]
-        
-        let testBarrages3 = [
+            "看到你的进步真是鼓舞人心！",
             "你的创造性思维令人印象深刻！",
-            "这个实现非常优雅！"
-        ]
-        
-        let testBarrages4 = [
+            "这个实现非常优雅！",
             "困难只是暂时的，你一定能克服！",
-            "你的专注力令人钦佩！"
-        ]
-        
-        let testBarrages5 = [
+            "你的专注力令人钦佩！",
             "你处理复杂问题的方式非常出色！",
             "坚持就会成功，你做得很棒！"
         ]
         
-        // Combine all test messages
-        let allTestBarrages = testBarrages1 + testBarrages2 + testBarrages3 + testBarrages4 + testBarrages5
-        
-        // Display and speak messages one by one, synchronized
-        displayNextBarrage(messages: allTestBarrages, index: 0)
-    }
-    
-    // Helper method to display barrages one by one, synchronized with speech
-    private func displayNextBarrage(messages: [String], index: Int) {
-        // Check if we've reached the end of the messages
-        if index >= messages.count {
-            return
-        }
-        
-        // Get the current message
-        let text = messages[index]
-        
-        // Show the barrage
-        self.barrageOverlayWindow?.addBarrage(text: text)
-        
-        // If speech is enabled, read the message and wait for completion before showing next
-        if let settings = self.appSettings.first, settings.speechEnabled, let speechSynthesizer = self.speechSynthesizer {
-            speechSynthesizer.speak(text: text) {
-                // When speech is complete, display the next barrage after a short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.displayNextBarrage(messages: messages, index: index + 1)
-                }
-            }
-        } else {
-            // If speech is not enabled, display the next barrage after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self.displayNextBarrage(messages: messages, index: index + 1)
-            }
-        }
+        barrageQueue.enqueueMultiple(testMessages)
     }
 }
 

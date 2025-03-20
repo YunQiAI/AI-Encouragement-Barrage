@@ -73,7 +73,18 @@ class BarrageManager: ObservableObject {
     
     // 添加弹幕
     func addBarrage(text: String, isError: Bool = false) {
-        let direction: BarrageItem.Direction = .random()
+        let direction: BarrageItem.Direction
+        switch directionSetting {
+        case "leftToRight":
+            direction = .leftToRight
+        case "rightToLeft":
+            direction = .rightToLeft
+        case "bidirectional":
+            direction = .random()
+        default:
+            direction = .rightToLeft
+        }
+        
         let newBarrage = BarrageItem.create(
             text: text,
             screenSize: screenSize,
@@ -84,6 +95,7 @@ class BarrageManager: ObservableObject {
         DispatchQueue.main.async {
             self.activeBarrages.append(newBarrage)
             
+            // 更新弹幕存活时间，根据速度和屏幕宽度计算
             let travelTime = (self.screenSize.width + 400) / (self.speed * 3.0) * 0.03
             DispatchQueue.main.asyncAfter(deadline: .now() + travelTime) {
                 self.activeBarrages.removeAll { $0.id == newBarrage.id }
@@ -179,15 +191,16 @@ class BarrageManager: ObservableObject {
             for i in 0..<self.activeBarrages.count {
                 var barrage = self.activeBarrages[i]
                 let moveDistance = self.speed * 3.0
+                let effectiveWidth = self.screenSize.width * self.travelRange
                 
                 if barrage.direction == .leftToRight {
                     barrage.position.x += moveDistance
-                    if barrage.position.x > self.screenSize.width {
+                    if barrage.position.x > effectiveWidth {
                         barrage.opacity -= 0.05
                     }
                 } else {
                     barrage.position.x -= moveDistance
-                    if barrage.position.x < 0 {
+                    if barrage.position.x < self.screenSize.width - effectiveWidth {
                         barrage.opacity -= 0.05
                     }
                 }

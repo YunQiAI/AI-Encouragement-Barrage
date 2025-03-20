@@ -6,14 +6,15 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct TestVoiceView: View {
     @Binding var testVoiceText: String
     @Binding var showTestVoicePopup: Bool
     @Binding var settings: AppSettings
     
-    @State private var speechSynthesizer = SpeechSynthesizer()
     @State private var isPlaying = false
+    @State private var speechSynthesizer = SpeechSynthesizer()
     
     var body: some View {
         VStack(spacing: 20) {
@@ -91,7 +92,7 @@ struct TestVoiceView: View {
                     
                     // 播放当前语音示例
                     Button(action: {
-                        speechSynthesizer.speakSample(voiceIdentifier: voiceId)
+                        playSample(voiceId)
                     }) {
                         Image(systemName: "speaker.wave.2")
                             .foregroundColor(.blue)
@@ -116,14 +117,27 @@ struct TestVoiceView: View {
     private func testCustomText() {
         guard !testVoiceText.isEmpty else { return }
         
-        let tempSynthesizer = SpeechSynthesizer()
-        
         // Use settings voice if available
         if let voiceId = settings.voiceIdentifier {
-            tempSynthesizer.setVoice(identifier: voiceId)
+            speechSynthesizer.setVoice(identifier: voiceId)
         }
         
-        tempSynthesizer.speak(text: testVoiceText)
+        speechSynthesizer.speak(text: testVoiceText)
+    }
+    
+    // Play sample text with specified voice
+    private func playSample(_ voiceIdentifier: String) {
+        if let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
+            let sampleText = voice.language.starts(with: "zh-") ? "这是语音示例" : "This is a voice sample"
+            let utterance = AVSpeechUtterance(string: sampleText)
+            utterance.voice = voice
+            utterance.rate = 0.5
+            utterance.pitchMultiplier = 1.0
+            utterance.volume = 1.0
+            
+            let tempSynthesizer = AVSpeechSynthesizer()
+            tempSynthesizer.speak(utterance)
+        }
     }
 }
 
