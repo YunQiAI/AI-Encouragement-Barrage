@@ -58,7 +58,7 @@ class AIService: ObservableObject {
             
             // Azure specific settings
             self.azureEndpoint = "https://your-resource-name.openai.azure.com"
-            self.azureDeploymentName = "your-deployment-name"
+            self.azureDeploymentName = "gpt-4o"
             self.azureAPIVersion = "2023-12-01-preview" // Updated to latest version that supports gpt-4o
         }
         
@@ -270,10 +270,8 @@ class AIService: ObservableObject {
         }
     }
     
-    // Test image chat functionality
+    // Test image chat functionality - 直接使用屏幕截图
     func testImageChat(apiProvider: APIProvider, modelName: String, apiKey: String) async -> String {
-        _ = "This is a test message for image chat functionality."
-        
         // Save current settings
         let savedProvider = self.apiProvider
         let savedModelName = self.apiModelName
@@ -284,58 +282,11 @@ class AIService: ObservableObject {
         self.apiModelName = modelName
         self.apiKey = apiKey
         
-        // Try to load test image from Assets.xcassets
-        if let testImage = NSImage(named: "test_image")?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-            print("Successfully loaded test_image from Assets.xcassets")
-            do {
-                let response = try await analyzeImage(image: testImage)
-                
-                // Restore original settings
-                self.apiProvider = savedProvider
-                self.apiModelName = savedModelName
-                self.apiKey = savedApiKey
-                
-                return "Image chat test successful: \(response)"
-            } catch {
-                // Restore original settings
-                self.apiProvider = savedProvider
-                self.apiModelName = savedModelName
-                self.apiKey = savedApiKey
-                
-                return "Image chat test failed: \(error.localizedDescription)"
-            }
-        } else {
-            print("Failed to load test_image from Assets.xcassets")
-        }
+        print("正在捕获屏幕截图用于测试...")
         
-        // If direct loading failed, try alternative methods
-        if let testImageURL = Bundle.main.url(forResource: "test_image", withExtension: "png"),
-           let testImage = NSImage(contentsOf: testImageURL)?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-            print("Successfully loaded test_image from Bundle")
-            do {
-                let response = try await analyzeImage(image: testImage)
-                
-                // Restore original settings
-                self.apiProvider = savedProvider
-                self.apiModelName = savedModelName
-                self.apiKey = savedApiKey
-                
-                return "Image chat test successful: \(response)"
-            } catch {
-                // Restore original settings
-                self.apiProvider = savedProvider
-                self.apiModelName = savedModelName
-                self.apiKey = savedApiKey
-                
-                return "Image chat test failed: \(error.localizedDescription)"
-            }
-        } else {
-            print("Failed to load test_image from Bundle")
-        }
-        
-        // If all methods failed, try to use screen capture
-        if let screenImage = await captureScreen() {
-            print("Using screen capture as test image")
+        // 尝试使用备用方法捕获屏幕
+        if let screenImage = await captureScreenWithNSScreen() {
+            print("成功使用NSScreen捕获屏幕截图")
             do {
                 let response = try await analyzeImage(image: screenImage)
                 
@@ -344,42 +295,146 @@ class AIService: ObservableObject {
                 self.apiModelName = savedModelName
                 self.apiKey = savedApiKey
                 
-                return "Image chat test successful (using screen capture): \(response)"
+                return "图片聊天测试成功: \(response)"
             } catch {
                 // Restore original settings
                 self.apiProvider = savedProvider
                 self.apiModelName = savedModelName
                 self.apiKey = savedApiKey
                 
-                return "Image chat test failed: \(error.localizedDescription)"
+                return "图片聊天测试失败: \(error.localizedDescription)"
+            }
+        } else {
+            print("NSScreen屏幕截图捕获失败，尝试使用ScreenCaptureKit...")
+            
+            // 尝试使用ScreenCaptureKit
+            if let screenImage = await captureScreenWithSCK() {
+                print("成功使用ScreenCaptureKit捕获屏幕截图")
+                do {
+                    let response = try await analyzeImage(image: screenImage)
+                    
+                    // Restore original settings
+                    self.apiProvider = savedProvider
+                    self.apiModelName = savedModelName
+                    self.apiKey = savedApiKey
+                    
+                    return "图片聊天测试成功: \(response)"
+                } catch {
+                    // Restore original settings
+                    self.apiProvider = savedProvider
+                    self.apiModelName = savedModelName
+                    self.apiKey = savedApiKey
+                    
+                    return "图片聊天测试失败: \(error.localizedDescription)"
+                }
+            } else {
+                print("所有屏幕截图方法均失败")
+                
+                // Restore original settings
+                self.apiProvider = savedProvider
+                self.apiModelName = savedModelName
+                self.apiKey = savedApiKey
+                
+                return "图片聊天测试失败: 无法捕获屏幕截图"
             }
         }
-        
-        // If all methods failed, return error
-        // Restore original settings
-        self.apiProvider = savedProvider
-        self.apiModelName = savedModelName
-        self.apiKey = savedApiKey
-        
-        return "Image chat test failed: Test image not found. Please ensure test_image.png is in the Assets.xcassets folder."
     }
     
-    // Capture screen for testing using ScreenCaptureKit
-    private func captureScreen() async -> CGImage? {
+    // 使用NSScreen捕获屏幕（备用方法）
+    private func captureScreenWithNSScreen() async -> CGImage? {
+        print("尝试使用NSScreen捕获屏幕...")
+        
+        guard let screen = NSScreen.main else {
+            print("无法获取主屏幕")
+            return nil
+        }
+        
+        let rect = screen.frame
+        print("屏幕尺寸: \(rect.width) x \(rect.height)")
+        
+        // 创建一个CGRect，表示要捕获的区域
+        let captureRect = CGRect(x: 0, y: 0, width: rect.width, height: rect.height)
+        
+        // 创建一个位图上下文
+        guard let bitmapRep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(captureRect.width),
+            pixelsHigh: Int(captureRect.height),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            print("无法创建位图表示")
+            return nil
+        }
+        
+        // 创建一个图形上下文
+        guard let context = NSGraphicsContext(bitmapImageRep: bitmapRep) else {
+            print("无法创建图形上下文")
+            return nil
+        }
+        
+        // 保存当前图形上下文
+        let previousContext = NSGraphicsContext.current
+        NSGraphicsContext.current = context
+        
+        // 捕获屏幕内容
+        if let windowImage = CGWindowListCreateImage(captureRect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution) {
+            let nsImage = NSImage(cgImage: windowImage, size: NSSize(width: captureRect.width, height: captureRect.height))
+            nsImage.draw(in: NSRect(x: 0, y: 0, width: captureRect.width, height: captureRect.height))
+            
+            // 恢复之前的图形上下文
+            NSGraphicsContext.current = previousContext
+            
+            // 获取CGImage
+            if let cgImage = bitmapRep.cgImage {
+                print("成功创建CGImage")
+                return cgImage
+            } else {
+                print("无法从位图表示创建CGImage")
+                return windowImage
+            }
+        } else {
+            print("无法捕获屏幕内容")
+            // 恢复之前的图形上下文
+            NSGraphicsContext.current = previousContext
+            return nil
+        }
+    }
+    
+    // 使用ScreenCaptureKit捕获屏幕
+    private func captureScreenWithSCK() async -> CGImage? {
+        print("尝试使用ScreenCaptureKit捕获屏幕...")
+        
         // 创建一个异步等待的结果
         return await withCheckedContinuation { continuation in
             // 创建一个临时的ScreenCaptureManager
             let screenCaptureManager = ScreenCaptureManager(captureInterval: 1.0)
             
+            // 首先请求权限
+            print("请求屏幕录制权限...")
+            screenCaptureManager.requestScreenCapturePermission()
+            
+            // 检查权限
+            let hasPermission = screenCaptureManager.checkScreenCapturePermission()
+            print("屏幕录制权限状态: \(hasPermission ? "已授权" : "未授权")")
+            
             // 设置一次性捕获处理器
+            print("开始捕获屏幕...")
             screenCaptureManager.startCapturing { image in
                 // 捕获到图像后，停止捕获并返回结果
+                print("捕获到图像: \(image != nil ? "成功" : "失败")")
                 screenCaptureManager.stopCapturing()
                 continuation.resume(returning: image)
             }
             
             // 设置超时，防止无限等待
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                print("捕获超时")
                 screenCaptureManager.stopCapturing()
                 continuation.resume(returning: nil)
             }
