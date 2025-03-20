@@ -30,8 +30,8 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             // Chat interface
-            if let aiService = aiService {
-                ChatView(ollamaService: aiService)
+            if let aiService = aiService, let screenCaptureManager = screenCaptureManager {
+                ChatView(ollamaService: aiService, screenCaptureManager: screenCaptureManager)
                     .tabItem {
                         Label("Chat", systemImage: "bubble.left.and.bubble.right")
                     }
@@ -143,14 +143,6 @@ struct ContentView: View {
         // Update screen capture interval
         screenCaptureManager?.setCaptureInterval(settings.captureInterval)
         
-        // Update AI service configuration
-        aiService?.updateConfig(settings: settings)
-        
-        // Set custom voice if specified
-        if let voiceIdentifier = settings.voiceIdentifier {
-            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
-        }
-        
         // Update barrage settings
         barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
         if let direction = settings.barrageDirection {
@@ -158,6 +150,11 @@ struct ContentView: View {
         }
         if let range = settings.barrageTravelRange {
             barrageOverlayWindow?.setTravelRange(range)
+        }
+        
+        // Set custom voice if specified
+        if let voiceIdentifier = settings.voiceIdentifier {
+            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
         }
     }
     
@@ -169,14 +166,6 @@ struct ContentView: View {
         // Update screen capture interval
         screenCaptureManager?.setCaptureInterval(settings.captureInterval)
         
-        // Update AI service configuration
-        aiService?.updateConfig(settings: settings)
-        
-        // Set custom voice if specified
-        if let voiceIdentifier = settings.voiceIdentifier {
-            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
-        }
-        
         // Update barrage settings
         barrageOverlayWindow?.setSpeed(settings.barrageSpeed)
         if let direction = settings.barrageDirection {
@@ -184,6 +173,11 @@ struct ContentView: View {
         }
         if let range = settings.barrageTravelRange {
             barrageOverlayWindow?.setTravelRange(range)
+        }
+        
+        // Set custom voice if specified
+        if let voiceIdentifier = settings.voiceIdentifier {
+            speechSynthesizer?.setVoice(identifier: voiceIdentifier)
         }
     }
     

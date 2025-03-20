@@ -14,11 +14,12 @@ struct ChatView: View {
     @Query private var messages: [ChatMessage]
     @EnvironmentObject private var appState: AppState
     @ObservedObject var ollamaService: AIService
+    @ObservedObject var screenCaptureManager: ScreenCaptureManager
     
     @State private var messageText: String = ""
     @State private var selectedImage: NSImage? = nil
     @State private var isProcessing: Bool = false
-    @State private var scrollViewProxy: ScrollViewProxy? = nil
+    @State private var countdownWindow: NSWindow? = nil
     
     var body: some View {
         VStack(spacing: 0) {
@@ -35,11 +36,10 @@ struct ChatView: View {
                 }
                 .background(Color(.textBackgroundColor).opacity(0.05))
                 .onAppear {
-                    scrollViewProxy = proxy
-                    scrollToBottom()
+                    scrollToBottom(proxy: proxy)
                 }
                 .onChange(of: messages.count) { _, _ in
-                    scrollToBottom()
+                    scrollToBottom(proxy: proxy)
                 }
             }
             
@@ -47,6 +47,16 @@ struct ChatView: View {
             
             // Input area
             HStack(alignment: .bottom, spacing: 8) {
+                // Screenshot button
+                Button(action: captureAndSendScreenshot) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("Capture Screen")
+                .disabled(isProcessing)
+                
                 // Image selection button
                 Button(action: selectImage) {
                     Image(systemName: "photo")
@@ -55,6 +65,7 @@ struct ChatView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Add Image")
+                .disabled(isProcessing)
                 
                 // Image preview (if any)
                 if let selectedImage = selectedImage {
@@ -82,6 +93,7 @@ struct ChatView: View {
                     .background(Color(.textBackgroundColor).opacity(0.1))
                     .cornerRadius(16)
                     .lineLimit(1...5)
+                    .disabled(isProcessing)
                 
                 // Send button
                 Button(action: sendMessage) {
@@ -95,13 +107,68 @@ struct ChatView: View {
             }
             .padding()
             .background(Color(.windowBackgroundColor))
+            
+            // Status area
+            HStack {
+                Text(isProcessing ? "Processing AI response..." : "Ready")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .background(Color(.windowBackgroundColor))
+        }
+        .onAppear {
+            startScreenCapture()
         }
     }
     
-    private func scrollToBottom() {
+    private func scrollToBottom(proxy: ScrollViewProxy) {
         if let lastMessage = messages.last {
             withAnimation {
-                scrollViewProxy?.scrollTo(lastMessage.id, anchor: .bottom)
+                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+            }
+        }
+    }
+    
+    private func startScreenCapture() {
+        screenCaptureManager.startCapturing { image in
+            guard let image = image else { return }
+            
+            isProcessing = true
+            
+            // 将截屏转换为NSImage
+            let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+            
+            // 将截屏添加到聊天窗口中
+            let imageData = nsImage.tiffRepresentation
+            let systemMessage = ChatMessage(text: "自动截屏", isFromUser: true, imageData: imageData)
+            
+            DispatchQueue.main.async {
+                self.modelContext.insert(systemMessage)
+            }
+            
+            Task {
+                do {
+                    let aiResponse = try await ollamaService.analyzeImage(image: image)
+                    
+                    DispatchQueue.main.async {
+                        let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
+                        self.modelContext.insert(aiMessage)
+                        self.isProcessing = false
+                        
+                        // Update app state with encouragement
+                        self.appState.updateLastEncouragement(aiResponse)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        let errorMessage = "AI response failed: \(error.localizedDescription)"
+                        let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
+                        self.modelContext.insert(aiMessage)
+                        self.isProcessing = false
+                    }
+                }
             }
         }
     }
@@ -122,6 +189,46 @@ struct ChatView: View {
                 }
             }
         }
+    }
+    
+    private func captureAndSendScreenshot() {
+        isProcessing = true
+        
+        // 创建一个倒计时窗口，让用户有时间准备
+        let countdown = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        countdown.title = "截屏倒计时"
+        countdown.center()
+        
+        // 保存窗口引用，防止提前释放
+        self.countdownWindow = countdown
+        
+        // 创建倒计时视图
+        let countdownView = CountdownView {
+            // 关闭窗口
+            DispatchQueue.main.async {
+                self.countdownWindow?.close()
+                self.countdownWindow = nil
+                
+                // 延迟一小段时间，确保倒计时窗口已关闭
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // 捕获屏幕
+                    self.screenCaptureManager.captureScreenNow()
+                }
+            }
+        }
+        
+        // 设置窗口内容
+        let hostingView = NSHostingView(rootView: countdownView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 200, height: 100)
+        countdown.contentView = hostingView
+        
+        // 显示窗口
+        countdown.makeKeyAndOrderFront(nil)
     }
     
     private func sendMessage() {
@@ -188,6 +295,33 @@ struct ChatView: View {
     }
 }
 
+struct CountdownView: View {
+    @State private var countdown = 3
+    let onComplete: () -> Void
+    
+    var body: some View {
+        VStack {
+            Text("\(countdown)")
+                .font(.system(size: 48, weight: .bold))
+                .onAppear {
+                    startCountdown()
+                }
+        }
+        .frame(width: 200, height: 100)
+    }
+    
+    private func startCountdown() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            countdown -= 1
+            
+            if countdown <= 0 {
+                timer.invalidate()
+                onComplete()
+            }
+        }
+    }
+}
+
 struct MessageBubble: View {
     let message: ChatMessage
     
@@ -231,7 +365,7 @@ struct MessageBubble: View {
 }
 
 #Preview {
-    ChatView(ollamaService: AIService(settings: AppSettings()))
+    ChatView(ollamaService: AIService(settings: AppSettings()), screenCaptureManager: ScreenCaptureManager())
         .modelContainer(for: [ChatMessage.self], inMemory: true)
         .environmentObject(AppState())
 }
