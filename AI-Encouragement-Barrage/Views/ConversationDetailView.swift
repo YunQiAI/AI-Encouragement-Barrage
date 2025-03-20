@@ -58,6 +58,15 @@ struct ConversationDetailView: View {
                 
                 Spacer()
                 
+                // 屏幕监控开关
+                Toggle(isOn: $appState.isScreenAnalysisActive) {
+                    Text("监控")
+                        .font(.subheadline)
+                }
+                .toggleStyle(.switch)
+                .padding(.trailing)
+                .help(appState.isScreenAnalysisActive ? "关闭屏幕监控" : "开启屏幕监控")
+                
                 // 弹幕开关
                 Toggle(isOn: $appState.isRunning) {
                     Text("弹幕")
@@ -167,6 +176,22 @@ struct ConversationDetailView: View {
             selectedImage = nil
             isProcessing = false
         }
+        .onAppear {
+            // 确保ScreenCaptureManager知道当前会话
+            if let conversation = conversation {
+                appState.selectConversation(conversation.id)
+            }
+            
+            // 加载保存的设置
+            appState.loadSavedSettings()
+            
+            // 设置通知监听器
+            setupNotificationObservers()
+        }
+        .onDisappear {
+            // 移除通知监听器
+            removeNotificationObservers()
+        }
     }
     
     private func selectImage() {
@@ -214,12 +239,18 @@ struct ConversationDetailView: View {
                 
                 // 延迟一小段时间，确保倒计时窗口已关闭
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    // 捕获屏幕
-                    self.screenCaptureManager.captureScreenNow { image in
+                    // 捕获屏幕，并获取当前会话ID
+                    self.screenCaptureManager.captureScreenNow { image, capturedConversationID in
                         guard let image = image else {
                             self.isProcessing = false
                             return
                         }
+                        
+                        // 确定使用哪个会话ID
+                        let targetConversationID = capturedConversationID ?? conversation.id
+                        
+                        // 查找对应的会话
+                        let targetConversation = self.findConversation(with: targetConversationID) ?? conversation
                         
                         // 将截屏转换为NSImage
                         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
@@ -227,7 +258,10 @@ struct ConversationDetailView: View {
                         // 将截屏添加到聊天窗口中
                         let imageData = nsImage.tiffRepresentation
                         let userMessage = ChatMessage(text: "自动截屏", isFromUser: true, imageData: imageData)
-                        conversation.addMessage(userMessage)
+                        userMessage.conversationID = targetConversation.id
+                        targetConversation.addMessage(userMessage)
+                        
+                        print("截图已添加到会话: \(targetConversation.title), ID: \(targetConversation.id)")
                         
                         Task {
                             do {
@@ -235,7 +269,8 @@ struct ConversationDetailView: View {
                                 
                                 DispatchQueue.main.async {
                                     let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
-                                    conversation.addMessage(aiMessage)
+                                    aiMessage.conversationID = targetConversation.id
+                                    targetConversation.addMessage(aiMessage)
                                     self.isProcessing = false
                                     
                                     // Update app state with encouragement
@@ -245,7 +280,8 @@ struct ConversationDetailView: View {
                                 DispatchQueue.main.async {
                                     let errorMessage = "AI response failed: \(error.localizedDescription)"
                                     let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
-                                    conversation.addMessage(aiMessage)
+                                    aiMessage.conversationID = targetConversation.id
+                                    targetConversation.addMessage(aiMessage)
                                     self.isProcessing = false
                                 }
                             }
@@ -262,6 +298,102 @@ struct ConversationDetailView: View {
         
         // 显示窗口
         countdown.makeKeyAndOrderFront(nil)
+    }
+    
+    // 设置通知监听器
+    private func setupNotificationObservers() {
+        // 监听截图通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ScreenCaptureReceived"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            self.handleScreenCaptureNotification(notification)
+        }
+        
+        // 监听AI回复通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("AIResponseReceived"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            self.handleAIResponseNotification(notification)
+        }
+    }
+    
+    // 移除通知监听器
+    private func removeNotificationObservers() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("ScreenCaptureReceived"),
+            object: nil
+        )
+        
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("AIResponseReceived"),
+            object: nil
+        )
+    }
+    
+    // 处理截图通知
+    private func handleScreenCaptureNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let conversationID = userInfo["conversationID"] as? UUID,
+              let imageData = userInfo["imageData"] as? Data else {
+            print("截图通知缺少必要信息")
+            return
+        }
+        
+        // 检查是否是当前会话
+        if conversation?.id == conversationID {
+            // 创建用户消息并添加到会话
+            let userMessage = ChatMessage(text: "自动屏幕分析", isFromUser: true, imageData: imageData)
+            userMessage.conversationID = conversationID
+            conversation?.addMessage(userMessage)
+            
+            print("已将截图添加到当前会话")
+        }
+    }
+    
+    // 处理AI回复通知
+    private func handleAIResponseNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let conversationID = userInfo["conversationID"] as? UUID,
+              let response = userInfo["response"] as? String else {
+            print("AI回复通知缺少必要信息")
+            return
+        }
+        
+        // 检查是否是当前会话
+        if conversation?.id == conversationID {
+            // 创建AI回复消息并添加到会话
+            let aiMessage = ChatMessage(text: response, isFromUser: false)
+            aiMessage.conversationID = conversationID
+            conversation?.addMessage(aiMessage)
+            
+            print("已将AI回复添加到当前会话")
+        }
+    }
+    
+    // 根据ID查找会话
+    private func findConversation(with id: UUID) -> Conversation? {
+        // 如果当前会话ID匹配，直接返回
+        if let conversation = conversation, conversation.id == id {
+            return conversation
+        }
+        
+        // 否则使用modelContext查询
+        do {
+            let descriptor = FetchDescriptor<Conversation>(
+                predicate: #Predicate<Conversation> { $0.id == id }
+            )
+            let conversations = try modelContext.fetch(descriptor)
+            return conversations.first
+        } catch {
+            print("查找会话失败: \(error.localizedDescription)")
+            return nil
+        }
     }
     
     private func sendMessage() {

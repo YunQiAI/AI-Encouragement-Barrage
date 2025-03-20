@@ -1,0 +1,122 @@
+# Cline Rules for SwiftUI Development
+# 发现bugs后，就更新再这里，还要维护文件不要太长。
+# 规则1: 禁止在结构体中使用weak self
+rule "no-weak-self-in-struct" {
+  description = "在SwiftUI的View结构体中不应使用weak self"
+  severity = "error"
+  
+  # 检测在struct定义中使用[weak self]的情况
+  pattern = """
+  struct\s+\w+.*?\{
+    .*?\[\s*weak\s+self\s*\]
+  """
+  message = "结构体是值类型，不存在引用循环问题，不应使用[weak self]。请直接使用self。"
+}
+
+# 规则2: 检测重复的属性声明
+rule "no-duplicate-properties" {
+  description = "检测类或结构体中重复声明的属性"
+  severity = "error"
+  
+  # 这个规则需要更复杂的静态分析，这里只是一个简化版
+  # 实际实现可能需要使用AST分析
+  message = "检测到可能重复声明的属性。请确保每个属性只声明一次。"
+}
+
+# 规则3: 禁止在条件绑定中使用非可选类型
+rule "no-unwrap-non-optional" {
+  description = "禁止对非可选类型使用条件绑定"
+  severity = "error"
+  
+  # 这个规则需要类型信息，简化版可能会有误报
+  pattern = """
+  (guard|if)\s+let\s+(\w+)\s*=\s*\2\s*else
+  """
+  message = "在guard/if let语句中，只应对可选类型进行解包，而不是对已经确定的非可选类型值进行解包。"
+}
+
+# 规则4: 警告未使用的变量
+rule "no-unused-variables" {
+  description = "警告未使用的变量"
+  severity = "warning"
+  
+  # 这个规则需要更复杂的静态分析
+  message = "检测到可能未使用的变量。如果不需要该变量，请移除它或使用下划线(_)忽略它。"
+}
+
+# 规则5: 确保UI更新在主线程执行
+rule "ui-updates-on-main-thread" {
+  description = "确保UI更新在主线程执行"
+  severity = "error"
+  
+  # 检测在后台线程中可能更新UI的模式
+  pattern = """
+  DispatchQueue\.global\(\)\.async\s*\{
+    .*?
+    (self\.\w+\s*=|@Published|@State)
+  """
+  message = "在后台线程中检测到可能的UI更新。所有UI更新和@Published属性的修改必须在主线程上执行，请使用DispatchQueue.main.async。"
+}
+
+# 规则6: 检查NavigationSplitView的正确使用
+rule "proper-navigation-split-view" {
+  description = "确保NavigationSplitView的正确使用"
+  severity = "warning"
+  
+  # 检测可能的NavigationSplitView错误用法
+  pattern = """
+  NavigationSplitView\s*\{
+    (?!.*?detail:)
+  """
+  message = "检测到NavigationSplitView可能缺少detail参数。请确保正确使用NavigationSplitView的sidebar和detail参数。"
+}
+
+# 规则7: 确保NotificationCenter观察者被正确移除
+rule "remove-notification-observers" {
+  description = "确保NotificationCenter观察者被正确移除"
+  severity = "warning"
+  
+  # 检测添加观察者但可能没有移除的情况
+  pattern = """
+  NotificationCenter\.default\.addObserver
+  """
+  message = "检测到添加了NotificationCenter观察者。请确保在适当的时机(如onDisappear或deinit)中移除观察者，以避免内存泄漏。"
+}
+
+# 规则8: 避免在SwiftUI视图中直接使用modelContext
+rule "avoid-direct-model-context" {
+  description = "避免在SwiftUI视图中直接使用modelContext"
+  severity = "warning"
+  
+  # 检测在视图中直接使用modelContext的情况
+  pattern = """
+  modelContext\.(insert|delete|fetch)
+  """
+  message = "检测到在视图中直接使用modelContext。考虑将数据操作逻辑移到专门的服务类或使用SwiftData提供的高级API，以保持视图的简洁和可测试性。"
+}
+
+# 规则9: 确保正确处理可选值
+rule "safe-optional-handling" {
+  description = "确保正确处理可选值"
+  severity = "warning"
+  
+  # 检测可能的强制解包
+  pattern = """
+  \w+!
+  """
+  message = "检测到强制解包操作(!)。请考虑使用可选绑定(if let/guard let)或nil合并运算符(??)来安全地处理可选值。"
+}
+
+# 规则10: 避免在视图中使用过多的状态变量
+rule "limit-state-variables" {
+  description = "避免在视图中使用过多的状态变量"
+  severity = "warning"
+  
+  # 检测视图中可能过多的状态变量
+  pattern = """
+  struct\s+\w+.*?View.*?\{
+    .*?(@State.*?){5,}
+  """
+  message = "检测到视图中可能有过多的@State变量。考虑将相关状态提取到专门的ViewModel或使用@StateObject来管理复杂状态。"
+}
+

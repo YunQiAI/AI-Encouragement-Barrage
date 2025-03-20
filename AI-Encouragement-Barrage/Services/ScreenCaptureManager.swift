@@ -25,8 +25,30 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
     private var captureStream: SCStream?
     private var streamOutput: ScreenCaptureStreamOutput?
     
-    init(captureInterval: TimeInterval = 20.0) {
+    // 新增属性：AppState引用
+    private weak var appState: AppState?
+    
+    init(captureInterval: TimeInterval = 20.0, appState: AppState? = nil) {
         self.captureInterval = captureInterval
+        self.appState = appState
+        
+        // 监听AppState中isScreenAnalysisActive的变化
+        if let appState = appState {
+            appState.$isScreenAnalysisActive
+                .sink { [weak self] isActive in
+                    if isActive {
+                        print("屏幕监控已激活")
+                        // 如果已经在捕获中，不需要重新启动
+                        if !(self?.isCapturing ?? false) {
+                            self?.startCapturing { _ in }
+                        }
+                    } else {
+                        print("屏幕监控已停止")
+                        self?.stopCapturing()
+                    }
+                }
+                .store(in: &cancellables)
+        }
     }
     
     func startCapturing(handler: @escaping (CGImage?) -> Void) {
@@ -39,16 +61,21 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         captureTimer = Timer.scheduledTimer(withTimeInterval: captureInterval, repeats: true) { [weak self] _ in
             guard let self = self, self.isCapturing else { return }
             
+            // 只有当屏幕监控激活时才执行截屏
+            if self.appState?.isScreenAnalysisActive == true {
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.captureScreen()
+                }
+            }
+        }
+        
+        // 如果屏幕监控激活，立即执行一次截屏
+        if appState?.isScreenAnalysisActive == true {
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 self.captureScreen()
             }
-        }
-        
-        // 立即执行一次截屏
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            self.captureScreen()
         }
     }
     
@@ -81,8 +108,9 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
             return
         }
         
+        // 获取屏幕尺寸（仅用于日志记录）
         let rect = screen.frame
-        let captureRect = CGRect(x: 0, y: 0, width: rect.width, height: rect.height)
+        print("屏幕尺寸: \(rect.width) x \(rect.height)")
         
         // 尝试使用 ScreenCaptureKit
         Task {
@@ -177,8 +205,8 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         }
     }
     
-    // 手动触发一次截屏
-    func captureScreenNow(completion: ((CGImage?) -> Void)? = nil) {
+    // 手动触发一次截屏，并返回当前会话ID
+    func captureScreenNow(completion: ((CGImage?, UUID?) -> Void)? = nil) {
         Task { @MainActor [weak self] in
             guard let self = self else { return }
             
@@ -187,10 +215,14 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
             
             // 如果提供了完成处理程序，则临时替换
             if let completion = completion {
-                self.captureHandler = { image in
-                    completion(image)
+                self.captureHandler = { [weak self] image in
+                    // 获取当前会话ID
+                    let conversationID = self?.appState?.selectedConversationID
+                    print("截图完成，当前会话ID: \(String(describing: conversationID))")
+                    completion(image, conversationID)
+                    
                     // 恢复原始处理程序
-                    self.captureHandler = originalHandler
+                    self?.captureHandler = originalHandler
                 }
             }
             
@@ -215,6 +247,9 @@ class ScreenCaptureStreamOutput: NSObject, SCStreamOutput {
         // 创建 CGImage
         let context = CIContext()
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+        
+        // 打印截图信息
+        print("成功捕获屏幕截图 - \(Date().formatted(date: .abbreviated, time: .standard))")
         
         // 调用处理程序
         captureHandler(cgImage)

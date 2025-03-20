@@ -75,6 +75,13 @@ struct ContentView: View {
                 stopServices()
             }
         }
+        .onChange(of: appState.isScreenAnalysisActive) { _, isActive in
+            if isActive {
+                startScreenAnalysis()
+            } else {
+                stopScreenAnalysis()
+            }
+        }
         .onChange(of: appState.shouldTestBarrages) { _, shouldTest in
             if shouldTest {
                 sendTestBarrages()
@@ -241,6 +248,78 @@ struct ContentView: View {
         barrageQueue?.clear()
         barrageOverlayWindow?.clearAllBarrages()
         barrageOverlayWindow?.hide()
+    }
+    
+    // 启动屏幕分析功能 - 将截屏结果发送到当前会话
+    private func startScreenAnalysis() {
+        print("启动屏幕分析功能")
+        
+        // 使用设置中的截图间隔
+        let captureInterval = currentSettings.captureInterval
+        screenCaptureManager?.setCaptureInterval(captureInterval)
+        
+        // 启动截图功能，将截图发送到当前选中的会话
+        screenCaptureManager?.startCapturing { [self] image in
+            guard let image = image else { return }
+            
+            // 获取当前选中的会话ID
+            guard let selectedID = appState.selectedConversationID else {
+                print("没有选中的会话，无法发送截屏")
+                return
+            }
+            
+            // 将截屏转换为NSImage
+            let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+            let imageData = nsImage.tiffRepresentation
+            
+            // 使用NotificationCenter发送截图到当前会话
+            // 这样可以避免直接使用modelContext
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ScreenCaptureReceived"),
+                object: nil,
+                userInfo: [
+                    "conversationID": selectedID,
+                    "imageData": imageData as Any,
+                    "timestamp": Date()
+                ]
+            )
+            
+            // 分析图像
+            Task {
+                do {
+                    if let aiService = self.aiService {
+                        let aiResponse = try await aiService.analyzeImage(image: image)
+                        
+                        // 更新最新鼓励消息
+                        self.appState.updateLastEncouragement(aiResponse)
+                        
+                        // 添加到弹幕队列
+                        let sentences = aiResponse.components(separatedBy: ["。", "！", "？", ".", "!", "?"])
+                            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        
+                        self.barrageQueue?.enqueueMultiple(sentences)
+                        
+                        // 发送AI回复到当前会话
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("AIResponseReceived"),
+                            object: nil,
+                            userInfo: [
+                                "conversationID": selectedID,
+                                "response": aiResponse,
+                                "timestamp": Date()
+                            ]
+                        )
+                    }
+                } catch {
+                    print("处理截屏失败: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    // 停止屏幕分析功能
+    private func stopScreenAnalysis() {
+        print("停止屏幕分析功能")
+        screenCaptureManager?.stopCapturing()
     }
     
     private func sendTestBarrages() {

@@ -17,11 +17,11 @@ struct ChatInterfaceView: View {
     @ObservedObject var screenCaptureManager: ScreenCaptureManager
     
     var body: some View {
-        HSplitView {
-            // 左侧会话列表
+        NavigationSplitView {
+            // 左侧会话列表 - 更窄的设计
             ConversationListView()
-                .frame(minWidth: 200)
-            
+                .frame(minWidth: 180, idealWidth: 200, maxWidth: 220)
+        } detail: {
             // 右侧会话详情
             if let selectedID = appState.selectedConversationID,
                let selectedConversation = conversations.first(where: { $0.id == selectedID }) {
@@ -30,12 +30,14 @@ struct ChatInterfaceView: View {
                     screenCaptureManager: screenCaptureManager,
                     conversation: selectedConversation
                 )
+                .frame(minWidth: 500)
             } else {
                 ConversationDetailView(
                     aiService: aiService,
                     screenCaptureManager: screenCaptureManager,
                     conversation: nil
                 )
+                .frame(minWidth: 500)
             }
         }
         .onAppear {
@@ -54,4 +56,5 @@ struct ChatInterfaceView: View {
     )
     .modelContainer(for: [Conversation.self, ChatMessage.self], inMemory: true)
     .environmentObject(AppState())
+    .frame(width: 900, height: 600) // 设置预览尺寸以更好地展示分割比例
 }
