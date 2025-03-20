@@ -11,16 +11,16 @@ import Foundation
 enum APIProvider: String, CaseIterable, Identifiable {
     case ollama = "Ollama API"
     case azure = "Azure OpenAI API"
-    case openai = "OpenAI API"
-    case googleGemini = "Google Gemini API"
-    case anthropic = "Anthropic API"
+    case openai = "OpenAI API (未测试)"
+    case googleGemini = "Google Gemini API (未测试)"
+    case anthropic = "Anthropic API (未测试)"
     case lmStudio = "LM Studio API"
-    case deepSeek = "DeepSeek API"
-    case siliconFlow = "SiliconFlow API"
-    case xai = "xAI API"
-    case perplexity = "Perplexity API"
-    case groq = "Groq API"
-    case chatGLM = "ChatGLM API"
+    case deepSeek = "DeepSeek API (未测试)"
+    case siliconFlow = "SiliconFlow API (未测试)"
+    case xai = "xAI API (未测试)"
+    case perplexity = "Perplexity API (未测试)"
+    case groq = "Groq API (未测试)"
+    case chatGLM = "ChatGLM API (未测试)"
     
     var id: String { self.rawValue }
     
@@ -39,7 +39,7 @@ enum APIProvider: String, CaseIterable, Identifiable {
         case .anthropic:
             return "https://api.anthropic.com/v1"
         case .lmStudio:
-            return "http://localhost:9000" // Default local LM Studio server
+            return "http://127.0.0.1:1234" // Default local LM Studio server
         case .deepSeek:
             return "https://api.deepseek.com/v1"
         case .siliconFlow:
@@ -69,7 +69,7 @@ enum APIProvider: String, CaseIterable, Identifiable {
         case .anthropic:
             return "claude-3-opus"
         case .lmStudio:
-            return "default"
+            return "gemma-3-12b-it" // Updated default model for LM Studio
         case .deepSeek:
             return "deepseek-coder"
         case .siliconFlow:
@@ -88,7 +88,17 @@ enum APIProvider: String, CaseIterable, Identifiable {
     // Whether the provider supports image analysis
     var supportsImages: Bool {
         switch self {
-        case .ollama, .azure, .openai, .googleGemini, .anthropic:
+        case .ollama, .azure, .openai, .googleGemini, .anthropic, .lmStudio:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    // Whether the provider is tested and confirmed working
+    var isTested: Bool {
+        switch self {
+        case .ollama, .azure, .lmStudio:
             return true
         default:
             return false

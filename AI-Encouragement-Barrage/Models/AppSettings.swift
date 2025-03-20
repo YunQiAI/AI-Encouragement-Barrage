@@ -43,6 +43,10 @@ class AppSettings {
     var ollamaModelName: String?
     var ollamaAPIKey: String?
     
+    // LM Studio API settings - optional to solve migration issues
+    var lmStudioServerAddress: String?
+    var lmStudioServerPort: Int?
+    
     // General API settings - optional to solve migration issues
     var apiModelName: String?
     var apiKey: String?
@@ -63,6 +67,8 @@ class AppSettings {
         useLocalOllama: Bool? = true,
         ollamaModelName: String? = "gemma3:4b",
         ollamaAPIKey: String? = "",
+        lmStudioServerAddress: String? = "http://127.0.0.1",
+        lmStudioServerPort: Int? = 1234,
         apiModelName: String? = "",
         apiKey: String? = ""
     ) {
@@ -81,6 +87,8 @@ class AppSettings {
         self.useLocalOllama = useLocalOllama
         self.ollamaModelName = ollamaModelName
         self.ollamaAPIKey = ollamaAPIKey
+        self.lmStudioServerAddress = lmStudioServerAddress
+        self.lmStudioServerPort = lmStudioServerPort
         self.apiModelName = apiModelName
         self.apiKey = apiKey
     }
@@ -150,5 +158,15 @@ class AppSettings {
     // Get effective Ollama API key
     var effectiveOllamaAPIKey: String {
         return ollamaAPIKey ?? ""
+    }
+    
+    // Get effective LM Studio server address
+    var effectiveLMStudioServerAddress: String {
+        return lmStudioServerAddress ?? "http://127.0.0.1"
+    }
+    
+    // Get effective LM Studio server port
+    var effectiveLMStudioServerPort: Int {
+        return lmStudioServerPort ?? 1234
     }
 }
