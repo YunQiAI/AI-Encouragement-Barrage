@@ -23,6 +23,11 @@ struct APISettingsView: View {
     @State private var ollamaModelName: String = ""
     @State private var ollamaAPIKey: String = ""
     
+    // LM Studio API settings
+    @State private var lmStudioServerAddress: String = "http://127.0.0.1"
+    @State private var lmStudioServerPort: Int = 1234
+    @State private var lmStudioModelName: String = ""
+    
     // Azure API settings
     @State private var azureEndpoint: String = ""
     @State private var azureDeploymentName: String = ""
@@ -77,6 +82,8 @@ struct APISettingsView: View {
                     ollamaSettingsView
                 case .azure:
                     azureSettingsView
+                case .lmStudio:
+                    lmStudioSettingsView
                 default:
                     generalAPISettingsView
                 }
@@ -169,6 +176,8 @@ struct APISettingsView: View {
         switch selectedAPIProvider {
         case .ollama:
             return ollamaModelName
+        case .lmStudio:
+            return lmStudioModelName
         default:
             return apiModelName
         }
@@ -360,6 +369,147 @@ struct APISettingsView: View {
         }
     }
     
+    // LM Studio API settings view
+    private var lmStudioSettingsView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // LM Studio settings
+            Text("Server Address:")
+            TextField("Server Address", text: $lmStudioServerAddress)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .onChange(of: lmStudioServerAddress) { _, _ in
+                    // Update aiService with new address
+                    let tempSettings = AppSettings()
+                    tempSettings.lmStudioServerAddress = lmStudioServerAddress
+                    tempSettings.lmStudioServerPort = lmStudioServerPort
+                    aiService.updateConfig(settings: tempSettings)
+                    updateSettings()
+                }
+            
+            HStack {
+                Text("Port:")
+                TextField("Port", value: $lmStudioServerPort, formatter: NumberFormatter())
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 80)
+                    .onChange(of: lmStudioServerPort) { _, _ in
+                        // Update aiService with new port
+                        let tempSettings = AppSettings()
+                        tempSettings.lmStudioServerAddress = lmStudioServerAddress
+                        tempSettings.lmStudioServerPort = lmStudioServerPort
+                        aiService.updateConfig(settings: tempSettings)
+                        updateSettings()
+                    }
+            }
+            
+            Divider().padding(.vertical, 5)
+            
+            Text("Model Name:")
+            
+            // Model selection with dynamic list from LM Studio API
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    TextField("Model Name", text: $lmStudioModelName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .onChange(of: lmStudioModelName) { _, _ in
+                            updateSettings()
+                        }
+                    
+                    // Refresh button
+                    Button(action: {
+                        refreshLMStudioModels()
+                    }) {
+                        if isRefreshingModels {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 30, height: 30)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .frame(width: 30, height: 30)
+                        }
+                    }
+                    .background(Color(.textBackgroundColor).opacity(0.1))
+                    .cornerRadius(8)
+                    .buttonStyle(.plain)
+                    .disabled(isRefreshingModels)
+                }
+                
+                // Show loading indicator or model list
+                if aiService.isLoadingModels {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("Loading models...")
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 5)
+                } else if let error = aiService.modelLoadError {
+                    Text("Error: \(error)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                } else if aiService.availableLMStudioModels.isEmpty {
+                    Text("No models found. Click refresh to load models.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    // Model dropdown menu
+                    Menu {
+                        ForEach(aiService.availableLMStudioModels) { model in
+                            Button(action: {
+                                lmStudioModelName = model.id
+                                updateSettings()
+                                print("Selected model from dropdown: \(model.id)")
+                            }) {
+                                HStack {
+                                    Text(model.id)
+                                    if lmStudioModelName == model.id {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Available Models")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                        }
+                        .padding(8)
+                        .background(Color(.textBackgroundColor).opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    // Show available models
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(aiService.availableLMStudioModels) { model in
+                                Text(model.id)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(lmStudioModelName == model.id ? 
+                                                  Color.blue.opacity(0.2) : 
+                                                  Color(.textBackgroundColor).opacity(0.1))
+                                    )
+                                    .onTapGesture {
+                                        lmStudioModelName = model.id
+                                        updateSettings()
+                                        print("Selected model from list: \(model.id)")
+                                    }
+                            }
+                        }
+                        .padding(.vertical, 5)
+                    }
+                }
+            }
+            
+            Text("Use the model ID as shown in LM Studio")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+    
     // Refresh Ollama models
     private func refreshOllamaModels() {
         Task {
@@ -387,6 +537,38 @@ struct APISettingsView: View {
                 
                 // Try running a direct command to list models
                 print("Available models from aiService: \(aiService.availableOllamaModels.map { $0.name }.joined(separator: ", "))")
+            }
+            
+            isRefreshingModels = false
+        }
+    }
+    
+    // Refresh LM Studio models
+    private func refreshLMStudioModels() {
+        Task {
+            isRefreshingModels = true
+            print("Refreshing LM Studio models...")
+            
+            // Force refresh by creating a new temporary settings object
+            let tempSettings = AppSettings()
+            tempSettings.apiProvider = APIProvider.lmStudio.rawValue
+            tempSettings.lmStudioServerAddress = lmStudioServerAddress
+            tempSettings.lmStudioServerPort = lmStudioServerPort
+            aiService.updateConfig(settings: tempSettings)
+            
+            // Fetch models
+            await aiService.fetchLMStudioModels()
+            
+            // Update model name if models were found
+            if let firstModel = aiService.availableLMStudioModels.first {
+                lmStudioModelName = firstModel.id
+                updateSettings()
+                print("Selected first model: \(firstModel.id)")
+            } else {
+                print("No models found after refresh")
+                
+                // Try running a direct command to list models
+                print("Available models from aiService: \(aiService.availableLMStudioModels.map { $0.id }.joined(separator: ", "))")
             }
             
             isRefreshingModels = false
@@ -468,6 +650,11 @@ struct APISettingsView: View {
         ollamaModelName = settings.effectiveOllamaModelName
         ollamaAPIKey = settings.effectiveOllamaAPIKey
         
+        // LM Studio API settings
+        lmStudioServerAddress = settings.effectiveLMStudioServerAddress
+        lmStudioServerPort = settings.effectiveLMStudioServerPort
+        lmStudioModelName = settings.apiModelName ?? ""
+        
         // Azure API settings
         azureEndpoint = settings.effectiveAzureEndpoint
         azureDeploymentName = settings.effectiveAzureDeploymentName
@@ -476,9 +663,11 @@ struct APISettingsView: View {
         // Update AIService with current settings
         aiService.updateConfig(settings: settings)
         
-        // Fetch Ollama models if using local Ollama
+        // Fetch models based on selected provider
         if selectedAPIProvider == .ollama && useLocalOllama {
             refreshOllamaModels()
+        } else if selectedAPIProvider == .lmStudio {
+            refreshLMStudioModels()
         }
     }
     
@@ -487,9 +676,12 @@ struct APISettingsView: View {
         settings.apiProvider = selectedAPIProvider.rawValue
         
         // Set the appropriate model name based on the provider
-        if selectedAPIProvider == .ollama {
+        switch selectedAPIProvider {
+        case .ollama:
             settings.apiModelName = ollamaModelName
-        } else {
+        case .lmStudio:
+            settings.apiModelName = lmStudioModelName
+        default:
             settings.apiModelName = apiModelName
         }
         
@@ -506,6 +698,10 @@ struct APISettingsView: View {
         settings.useLocalOllama = useLocalOllama
         settings.ollamaModelName = ollamaModelName
         settings.ollamaAPIKey = ollamaAPIKey
+        
+        // LM Studio API settings
+        settings.lmStudioServerAddress = lmStudioServerAddress
+        settings.lmStudioServerPort = lmStudioServerPort
         
         // Azure API settings
         settings.azureEndpoint = azureEndpoint

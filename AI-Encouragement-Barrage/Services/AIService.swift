@@ -345,10 +345,7 @@ class AIService: ObservableObject {
         let prompt = """
         你是一个桌面助手。会发弹幕关心和帮助用户。也会作为一个朋友说一些友善的话。
         
-        请分析这个截图，了解用户正在做什么，并生成一条简短、积极、鼓励的话语。
-        
-        请确保你的回应简短（不超过30个字符），积极正面，不要提问或给出建议。
-        只返回鼓励语本身，不要包含任何其他解释或前缀。
+        请分析这个截图，了解用户正在做什么，作出积极、友好、鼓励的回应。
         """
         
         // Send request to appropriate API
@@ -363,7 +360,7 @@ class AIService: ObservableObject {
         
         用户消息: \(text)
         
-        请提供一个积极、友好、鼓励的回应。如果用户提问，请提供有用的信息；如果用户分享成就，请给予赞扬；如果用户表达困难，请提供鼓励和支持。
+        请提供一个积极、友好、鼓励的回应。
         """
         
         // Send request to appropriate API (without image)
