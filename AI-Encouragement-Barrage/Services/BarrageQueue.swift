@@ -10,7 +10,6 @@ import SwiftUI
 
 struct QueuedBarrage {
     let text: String
-    let isError: Bool
     var shouldSpeak: Bool
     let completion: (() -> Void)?
 }
@@ -39,12 +38,15 @@ class BarrageQueue: ObservableObject {
     
     func enqueueMultiple(_ texts: [String], shouldSpeak: Bool = true, isError: Bool = false) {
         for text in texts {
+            let type: BarrageItem.BarrageType = isError ? .error : .normal
             enqueue(QueuedBarrage(
                 text: text,
-                isError: isError,
                 shouldSpeak: shouldSpeak,
                 completion: nil
             ))
+            
+            // 使用新的API添加弹幕
+            barrageWindow?.addBarrage(text: text, type: type)
         }
     }
     
@@ -54,16 +56,13 @@ class BarrageQueue: ObservableObject {
         isProcessing = true
         let barrage = queue.removeFirst()
         
-        // Show barrage
-        barrageWindow?.addBarrage(text: barrage.text, isError: barrage.isError)
-        
-        // Handle speech if enabled and requested
+        // 处理语音（如果启用并请求）
         if speechEnabled && barrage.shouldSpeak, let synthesizer = speechSynthesizer {
             synthesizer.speak(text: barrage.text) {
                 self.finishCurrentBarrage(completion: barrage.completion)
             }
         } else {
-            // If no speech, wait for a fixed duration
+            // 如果没有语音，等待固定时间
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self.finishCurrentBarrage(completion: barrage.completion)
             }
@@ -74,7 +73,7 @@ class BarrageQueue: ObservableObject {
         completion?()
         isProcessing = false
         
-        // Process next barrage after a short delay
+        // 处理队列中的下一个弹幕（短暂延迟后）
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.processNextIfNeeded()
         }

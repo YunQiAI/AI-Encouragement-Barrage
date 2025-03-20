@@ -9,51 +9,8 @@ import Foundation
 import SwiftUI
 import AppKit
 
-// Barrage item
-struct BarrageItem: Identifiable {
-    let id = UUID()
-    let text: String
-    var position: CGPoint
-    var opacity: Double = 1.0
-    var direction: Direction
-    var fontSize: CGFloat
-    var color: Color
-    var isError: Bool = false
-    
-    enum Direction {
-        case leftToRight
-        case rightToLeft
-        
-        static func random() -> Direction {
-            return Bool.random() ? .leftToRight : .rightToLeft
-        }
-    }
-    
-    static func create(text: String, screenSize: CGSize, direction: Direction, isError: Bool = false) -> BarrageItem {
-        let startX: CGFloat
-        
-        if direction == .leftToRight {
-            startX = -200
-        } else {
-            startX = screenSize.width + 200
-        }
-        
-        let y = CGFloat.random(in: 50...(screenSize.height - 100))
-        let fontSize = CGFloat.random(in: 18...28)
-        let color = isError ? .red : Color(hue: Double.random(in: 0...1), saturation: 0.7, brightness: 0.9)
-        
-        return BarrageItem(
-            text: text,
-            position: CGPoint(x: startX, y: y),
-            direction: direction,
-            fontSize: fontSize,
-            color: color,
-            isError: isError
-        )
-    }
-}
-
-// Barrage manager
+// 旧版弹幕管理器 - 为了向后兼容保留
+// 新代码应该使用 BarrageEngine 和 BarrageService
 class BarrageManager: ObservableObject {
     @Published var activeBarrages: [BarrageItem] = []
     private var speed: Double = 1.0
@@ -73,23 +30,29 @@ class BarrageManager: ObservableObject {
     
     // 添加弹幕
     func addBarrage(text: String, isError: Bool = false) {
-        let direction: BarrageItem.Direction
+        // 创建配置
+        var config = BarrageConfig()
+        config.speed = speed
+        config.travelRange = travelRange
+        
+        // 设置方向
         switch directionSetting {
         case "leftToRight":
-            direction = .leftToRight
+            config.direction = .leftToRight
         case "rightToLeft":
-            direction = .rightToLeft
+            config.direction = .rightToLeft
         case "bidirectional":
-            direction = .random()
+            config.direction = .bidirectional
         default:
-            direction = .rightToLeft
+            config.direction = .rightToLeft
         }
         
+        // 创建弹幕
         let newBarrage = BarrageItem.create(
             text: text,
             screenSize: screenSize,
-            direction: direction,
-            isError: isError
+            config: config,
+            type: isError ? BarrageItem.BarrageType.error : BarrageItem.BarrageType.normal
         )
         
         DispatchQueue.main.async {

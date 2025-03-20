@@ -128,7 +128,7 @@ class LMStudioAPIService: AIServiceProtocol {
         ]
         
         // If image is provided, add it to the user message
-        if let imageBase64 = imageBase64 {
+        if let _ = imageBase64 {
             // For now, we'll just add a note about the image
             messages.append([
                 "role": "user",

@@ -92,28 +92,33 @@ struct ContentView: View {
         let settings = appSettings.first ?? AppSettings()
         currentSettings = settings
         
+        // 创建弹幕服务
+        let barrageService = BarrageService(modelContext: modelContext)
+        appState.barrageService = barrageService
+        
+        // 创建弹幕窗口
         barrageOverlayWindow = BarrageOverlayWindow()
         speechSynthesizer = SpeechSynthesizer()
         
         if let barrageOverlayWindow = barrageOverlayWindow,
            let speechSynthesizer = speechSynthesizer {
-            // Initialize barrage queue
+            // 初始化弹幕队列
             barrageQueue = BarrageQueue(
                 barrageWindow: barrageOverlayWindow,
                 speechSynthesizer: speechSynthesizer
             )
             barrageQueue?.setSpeechEnabled(settings.speechEnabled)
             
-            // Initialize other services
+            // 初始化其他服务
             screenCaptureManager = ScreenCaptureManager(captureInterval: settings.captureInterval)
-            aiService = AIService(settings: settings, barrageManager: barrageOverlayWindow.barrageManager)
+            aiService = AIService(settings: settings, barrageService: barrageService)
             
-            // Set custom voice if specified
+            // 设置自定义语音
             if let voiceIdentifier = settings.voiceIdentifier {
                 speechSynthesizer.setVoice(identifier: voiceIdentifier)
             }
             
-            // Set barrage speed and direction
+            // 设置弹幕速度和方向
             barrageOverlayWindow.setSpeed(settings.barrageSpeed)
             if let direction = settings.barrageDirection {
                 barrageOverlayWindow.setDirection(direction)
@@ -122,7 +127,7 @@ struct ContentView: View {
                 barrageOverlayWindow.setTravelRange(range)
             }
             
-            // Check screen capture permission
+            // 检查屏幕捕获权限
             if let screenCaptureManager = screenCaptureManager {
                 if !screenCaptureManager.checkScreenCapturePermission() {
                     screenCaptureManager.requestScreenCapturePermission()

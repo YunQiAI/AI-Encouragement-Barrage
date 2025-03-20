@@ -63,8 +63,6 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
     }
     
     // 使用CGWindowListCreateImage捕获屏幕
-    // 虽然CGWindowListCreateImage在macOS 14.0中被标记为废弃，但我们暂时继续使用它
-    // 因为它比ScreenCaptureKit更简单，更容易实现
     @MainActor
     private func captureScreen() {
         // 获取主屏幕尺寸
@@ -77,17 +75,9 @@ class ScreenCaptureManager: ObservableObject, @unchecked Sendable {
         let captureRect = CGRect(x: 0, y: 0, width: rect.width, height: rect.height)
         
         // 捕获屏幕内容
-        // 使用#available检查是否可以使用更新的API
         #if os(macOS)
-        // 我们知道CGWindowListCreateImage在macOS 14.0中被废弃，但暂时继续使用它
-        // 在未来版本中，我们应该使用ScreenCaptureKit
-        // 使用@available来标记这个方法，表明我们知道它已经被废弃
-        @available(macOS, deprecated: 14.0, message: "Using deprecated API temporarily")
-        func captureWithDeprecatedAPI() -> CGImage? {
-            return CGWindowListCreateImage(captureRect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution)
-        }
-        
-        if let windowImage = captureWithDeprecatedAPI() {
+        let image = CGWindowListCreateImage(captureRect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution)
+        if let windowImage = image {
             self.captureHandler?(windowImage)
         } else {
             print("无法捕获屏幕内容")

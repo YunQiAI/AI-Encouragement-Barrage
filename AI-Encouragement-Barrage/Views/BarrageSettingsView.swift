@@ -2,114 +2,187 @@
 //  BarrageSettingsView.swift
 //  AI-Encouragement-Barrage
 //
-//  Created by YunQiAI on 2025/03/20.
+//  Created by YunQiAI on 2025/03/21.
 //
 
 import SwiftUI
 
+/// 弹幕设置视图
 struct BarrageSettingsView: View {
-    @Binding var settings: AppSettings
-    var appState: AppState
+    @ObservedObject var barrageService: BarrageService
+    @State private var config: BarrageConfig
+    @State private var showPreview: Bool = false
+    @State private var previewText: String = "这是一条测试弹幕，用于预览效果"
+    
+    init(barrageService: BarrageService) {
+        self.barrageService = barrageService
+        self._config = State(initialValue: barrageService.getBarrageConfig())
+    }
     
     var body: some View {
-        GroupBox(label: Text("Barrage Settings").font(.headline)) {
-            VStack(alignment: .leading) {
-                Text("Barrage Speed: \(settings.barrageSpeed, specifier: "%.1f")")
-                Slider(value: $settings.barrageSpeed, in: 0.5...5.0, step: 0.1)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // 基本设置
+                basicSettingsSection
                 
-                Text("Higher values make barrages scroll faster")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // 样式设置
+                styleSettingsSection
                 
-                Divider().padding(.vertical, 5)
+                // 预览设置
+                previewSection
                 
-                Text("Barrage Direction:")
-                Picker("Barrage Direction", selection: $settings.barrageDirection.toUnwrapped(defaultValue: "rightToLeft")) {
-                    Text("Right to Left").tag("rightToLeft")
-                    Text("Left to Right").tag("leftToRight")
-                    Text("Bidirectional").tag("bidirectional")
-                }
-                .pickerStyle(.segmented)
-                .padding(.vertical, 5)
-                
-                Divider().padding(.vertical, 5)
-                
-                Text("Barrage Travel Range: \(Int((settings.barrageTravelRange ?? 1.0) * 100))%")
-                Slider(value: Binding(
-                    get: { settings.barrageTravelRange ?? 1.0 },
-                    set: { settings.barrageTravelRange = $0 }
-                ), in: 0.3...1.0, step: 0.05)
-                
-                Text("Adjust the width range of barrages on screen")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Divider().padding(.vertical, 5)
-                
-                // Test barrage button
-                Button(action: {
-                    // Apply current settings before testing
-                    applyCurrentSettings()
-                    // Trigger test barrages
-                    appState.triggerTestBarrages()
-                }) {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("Test Barrages")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 5)
+                // 应用按钮
+                applyButton
             }
-            .padding(.vertical, 10)
+            .padding()
+        }
+        .frame(minWidth: 500, minHeight: 600)
+    }
+    
+    // 基本设置部分
+    private var basicSettingsSection: some View {
+        GroupBox(label: Text("基本设置").font(.headline)) {
+            VStack(alignment: .leading, spacing: 12) {
+                // 显示开关
+                Toggle("显示弹幕", isOn: $barrageService.isVisible)
+                    .padding(.bottom, 5)
+                
+                // 语音开关
+                Toggle("启用语音朗读", isOn: $barrageService.speechEnabled)
+                    .padding(.bottom, 10)
+                
+                // 弹幕速度
+                HStack {
+                    Text("弹幕速度:")
+                    Slider(value: $config.speed, in: 0.2...3.0, step: 0.1)
+                    Text("\(config.speed, specifier: "%.1f")x")
+                        .frame(width: 40)
+                }
+                
+                // 弹幕密度
+                HStack {
+                    Text("弹幕密度:")
+                    Slider(value: $config.density, in: 1...20, step: 1)
+                    Text("\(Int(config.density))/秒")
+                        .frame(width: 50)
+                }
+                
+                // 弹幕方向
+                HStack {
+                    Text("弹幕方向:")
+                    Picker("", selection: $config.direction) {
+                        ForEach(BarrageConfig.Direction.allCases) { direction in
+                            Text(direction.rawValue).tag(direction)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                // 弹幕显示范围
+                HStack {
+                    Text("显示范围:")
+                    Slider(value: $config.travelRange, in: 0.3...1.0, step: 0.1)
+                    Text("\(Int(config.travelRange * 100))%")
+                        .frame(width: 40)
+                }
+                
+                // 弹幕存活时间
+                HStack {
+                    Text("存活时间:")
+                    Slider(value: $config.lifetime, in: 3...15, step: 1)
+                    Text("\(Int(config.lifetime))秒")
+                        .frame(width: 40)
+                }
+            }
+            .padding()
         }
     }
     
-    // Apply current settings without saving to database
-    private func applyCurrentSettings() {
-        // Create a temporary settings object with current values
-        let tempSettings = settings
-        
-        // Notify ContentView to update services with these settings
-        NotificationCenter.default.post(
-            name: NSNotification.Name("TemporarySettingsChanged"),
-            object: nil,
-            userInfo: ["settings": tempSettings]
-        )
+    // 样式设置部分
+    private var styleSettingsSection: some View {
+        GroupBox(label: Text("样式设置").font(.headline)) {
+            VStack(alignment: .leading, spacing: 12) {
+                // 预设样式
+                HStack {
+                    Text("预设样式:")
+                    Picker("", selection: $config.defaultStyle) {
+                        ForEach(BarrageConfig.StylePreset.allCases) { style in
+                            Text(style.rawValue).tag(style)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                // 随机样式
+                Toggle("使用随机样式", isOn: $config.useRandomStyle)
+                
+                // 动画效果
+                Toggle("启用动画效果", isOn: $config.enableAnimations)
+            }
+            .padding()
+        }
+    }
+    
+    // 预览部分
+    private var previewSection: some View {
+        GroupBox(label: Text("预览").font(.headline)) {
+            VStack(alignment: .leading, spacing: 12) {
+                // 预览文本输入
+                TextField("预览文本", text: $previewText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                // 预览按钮
+                HStack {
+                    Button("发送预览弹幕") {
+                        barrageService.showBarrage(
+                            text: previewText,
+                            type: .normal,
+                            speak: false,
+                            saveToHistory: false
+                        )
+                    }
+                    
+                    Button("发送高亮弹幕") {
+                        barrageService.showBarrage(
+                            text: previewText,
+                            type: .highlight,
+                            speak: false,
+                            saveToHistory: false
+                        )
+                    }
+                    
+                    Button("发送错误弹幕") {
+                        barrageService.showBarrage(
+                            text: previewText,
+                            type: .error,
+                            speak: false,
+                            saveToHistory: false
+                        )
+                    }
+                }
+                
+                // 清除按钮
+                Button("清除所有弹幕") {
+                    barrageService.clearAllBarrages()
+                }
+            }
+            .padding()
+        }
+    }
+    
+    // 应用按钮
+    private var applyButton: some View {
+        HStack {
+            Spacer()
+            Button("应用设置") {
+                barrageService.setBarrageConfig(config: config)
+            }
+            .buttonStyle(.borderedProminent)
+        }
     }
 }
 
-// Extension to handle optional binding
-extension Binding where Value == String? {
-    func toUnwrapped(defaultValue: String) -> Binding<String> {
-        Binding<String>(
-            get: { self.wrappedValue ?? defaultValue },
-            set: { self.wrappedValue = $0 }
-        )
-    }
-}
-
-// Extension to handle optional Double binding
-extension Binding where Value == Double? {
-    func toUnwrapped(defaultValue: Double) -> Binding<Double> {
-        Binding<Double>(
-            get: { self.wrappedValue ?? defaultValue },
-            set: { self.wrappedValue = $0 }
-        )
-    }
-}
-
-struct BarrageSettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        BarrageSettingsView(
-            settings: .constant(AppSettings()),
-            appState: AppState()
-        )
-        .padding()
-    }
+#Preview {
+    let barrageService = BarrageService()
+    return BarrageSettingsView(barrageService: barrageService)
 }

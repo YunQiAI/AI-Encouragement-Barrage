@@ -45,7 +45,12 @@ struct SettingsView: View {
                 ScreenCaptureSettingsView(settings: $settings)
                 
                 // Barrage settings
-                BarrageSettingsView(settings: $settings, appState: appState)
+                if let barrageService = appState.barrageService {
+                    BarrageSettingsView(barrageService: barrageService)
+                } else {
+                    Text("弹幕服务未初始化")
+                        .foregroundColor(.red)
+                }
                 
                 // Voice settings
                 VoiceSettingsView(

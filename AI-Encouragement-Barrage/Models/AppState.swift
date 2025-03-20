@@ -13,7 +13,8 @@ class AppState: ObservableObject {
     @Published var isProcessing: Bool = false
     @Published var lastEncouragement: String = ""
     @Published var lastCaptureTime: Date? = nil
-    @Published var shouldTestBarrages: Bool = false  // 新增状态
+    @Published var shouldTestBarrages: Bool = false
+    @Published var barrageService: BarrageService?
     
     func toggleRunning() {
         isRunning.toggle()

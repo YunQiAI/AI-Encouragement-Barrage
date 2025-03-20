@@ -12,7 +12,7 @@ import AppKit
 // 弹幕覆盖窗口
 class BarrageOverlayWindow {
     private var window: NSWindow?
-    var barrageManager: BarrageManager
+    private var engine: BarrageEngine
     
     init() {
         // 获取主屏幕尺寸
@@ -20,7 +20,7 @@ class BarrageOverlayWindow {
             fatalError("无法获取主屏幕")
         }
         
-        self.barrageManager = BarrageManager(screenSize: screen.frame.size)
+        self.engine = BarrageEngine(screenSize: screen.frame.size)
         setupWindow()
     }
     
@@ -45,7 +45,7 @@ class BarrageOverlayWindow {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary] // 在所有工作区显示，并且不随工作区切换而移动
         
         // 设置内容视图
-        let contentView = BarrageContentView(barrageManager: barrageManager)
+        let contentView = BarrageContentView(engine: engine)
         window.contentView = NSHostingView(rootView: contentView)
         
         self.window = window
@@ -62,41 +62,94 @@ class BarrageOverlayWindow {
     }
     
     // 添加弹幕
-    func addBarrage(text: String, isError: Bool = false) {
-        barrageManager.addBarrage(text: text, isError: isError)
+    func addBarrage(text: String, type: BarrageItem.BarrageType = .normal) {
+        engine.addBarrage(text: text, type: type)
+    }
+    
+    // 添加多条弹幕
+    func addMultipleBarrages(text: String, type: BarrageItem.BarrageType = .normal) {
+        engine.addMultipleBarrages(text: text, type: type)
+    }
+    
+    // 处理流式响应
+    func processStreamingResponse(_ partial: String) {
+        engine.processStreamingResponse(partial)
     }
     
     // 清除所有弹幕
     func clearAllBarrages() {
-        barrageManager.clearAllBarrages()
+        engine.clearAllBarrages()
     }
     
     // 设置弹幕速度
     func setSpeed(_ speed: Double) {
-        barrageManager.setSpeed(speed)
+        var config = engine.config
+        config.speed = speed
+        engine.config = config
     }
     
     // 设置弹幕方向
     func setDirection(_ direction: String) {
-        barrageManager.setDirection(direction)
+        var config = engine.config
+        if let dir = BarrageConfig.Direction.allCases.first(where: { $0.rawValue == direction }) {
+            config.direction = dir
+            engine.config = config
+        }
     }
     
     // 设置弹幕显示范围
     func setTravelRange(_ range: Double) {
-        barrageManager.setTravelRange(range)
+        var config = engine.config
+        config.travelRange = range
+        engine.config = config
+    }
+    
+    // 设置弹幕密度
+    func setDensity(_ density: Double) {
+        var config = engine.config
+        config.density = density
+        engine.config = config
+    }
+    
+    // 设置弹幕样式
+    func setStylePreset(_ preset: String) {
+        var config = engine.config
+        if let stylePreset = BarrageConfig.StylePreset.allCases.first(where: { $0.rawValue == preset }) {
+            config.defaultStyle = stylePreset
+            engine.config = config
+        }
+    }
+    
+    // 设置是否使用随机样式
+    func setUseRandomStyle(_ useRandom: Bool) {
+        var config = engine.config
+        config.useRandomStyle = useRandom
+        engine.config = config
+    }
+    
+    // 设置是否启用动画效果
+    func setEnableAnimations(_ enable: Bool) {
+        var config = engine.config
+        config.enableAnimations = enable
+        engine.config = config
     }
     
     // 更新屏幕大小（例如，当屏幕分辨率改变时）
     func updateScreenSize() {
         guard let screen = NSScreen.main else { return }
         window?.setFrame(screen.frame, display: true)
-        barrageManager.updateScreenSize(screen.frame.size)
+        engine.updateScreenSize(screen.frame.size)
+    }
+    
+    // 获取当前配置
+    func getConfig() -> BarrageConfig {
+        return engine.config
     }
 }
 
 // 弹幕内容视图
 struct BarrageContentView: View {
-    @ObservedObject var barrageManager: BarrageManager
+    @ObservedObject var engine: BarrageEngine
     
     var body: some View {
         ZStack {
@@ -104,13 +157,23 @@ struct BarrageContentView: View {
             Color.clear
             
             // 显示所有活跃的弹幕
-            ForEach(barrageManager.activeBarrages) { barrage in
+            ForEach(engine.activeBarrages) { barrage in
                 Text(barrage.text)
-                    .font(.system(size: barrage.fontSize, weight: .bold))
-                    .foregroundColor(barrage.color)
-                    .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+                    .font(.system(size: barrage.style.fontSize, weight: .bold))
+                    .foregroundColor(barrage.style.color)
+                    .shadow(
+                        color: barrage.style.shadowColor,
+                        radius: barrage.style.shadowRadius,
+                        x: barrage.style.shadowOffset.x,
+                        y: barrage.style.shadowOffset.y
+                    )
                     .position(barrage.position)
-                    .opacity(barrage.opacity)
+                    .opacity(barrage.opacity * barrage.style.opacity)
+                    .modifier(BarrageAnimationModifier(
+                        enableAnimations: engine.config.enableAnimations,
+                        animationEffect: barrage.style.animationEffect,
+                        animationState: barrage.animationState
+                    ))
             }
         }
         .edgesIgnoringSafeArea(.all)

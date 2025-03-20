@@ -33,8 +33,8 @@ class AIService: ObservableObject {
     // API service instance
     private var currentService: AIServiceProtocol?
     
-    // Barrage manager reference
-    private var barrageManager: BarrageManager?
+    // Barrage service reference
+    private var barrageService: BarrageService?
     
     // Published properties for UI updates
     @Published var availableOllamaModels: [OllamaModel] = []
@@ -42,8 +42,8 @@ class AIService: ObservableObject {
     @Published var isLoadingModels: Bool = false
     @Published var modelLoadError: String? = nil
     
-    init(settings: AppSettings? = nil, barrageManager: BarrageManager? = nil) {
-        self.barrageManager = barrageManager
+    init(settings: AppSettings? = nil, barrageService: BarrageService? = nil) {
+        self.barrageService = barrageService
         
         if let settings = settings {
             self.apiProvider = settings.effectiveAPIProvider
@@ -405,9 +405,9 @@ class AIService: ObservableObject {
                 // 处理流式响应
                 guard let self = self else { return }
                 
-                // 如果有弹幕管理器，处理流式响应
-                if let barrageManager = self.barrageManager {
-                    barrageManager.processStreamingResponse(partial)
+                // 如果有弹幕服务，处理流式响应
+                if let barrageService = self.barrageService {
+                    barrageService.processStreamingResponse(partial)
                 } else {
                     // 否则只打印
                     print("Stream partial: \(partial)")
@@ -417,8 +417,8 @@ class AIService: ObservableObject {
         
         // 如果不是流式响应或者服务不支持流式响应，处理完整响应
         if !useStreamingAPI || !service.supportsStreaming {
-            if let barrageManager = self.barrageManager {
-                barrageManager.addMultipleBarrages(text: response)
+            if let barrageService = self.barrageService {
+                barrageService.showMultipleBarrages(text: response)
             }
         }
         
