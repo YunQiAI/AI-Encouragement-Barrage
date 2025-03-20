@@ -407,10 +407,9 @@ class AIService: ObservableObject {
                 
                 // 如果有弹幕服务，处理流式响应
                 if let barrageService = self.barrageService {
-                    barrageService.processStreamingResponse(partial)
-                } else {
-                    // 否则只打印
-                    print("Stream partial: \(partial)")
+                    DispatchQueue.main.async {
+                        barrageService.processStreamingResponse(partial)
+                    }
                 }
             }
         )
@@ -418,7 +417,7 @@ class AIService: ObservableObject {
         // 如果不是流式响应或者服务不支持流式响应，处理完整响应
         if !useStreamingAPI || !service.supportsStreaming {
             if let barrageService = self.barrageService {
-                barrageService.showMultipleBarrages(text: response)
+                await barrageService.showMultipleBarrages(text: response)
             }
         }
         

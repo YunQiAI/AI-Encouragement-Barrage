@@ -145,29 +145,22 @@ struct ChatView: View {
             let imageData = nsImage.tiffRepresentation
             let systemMessage = ChatMessage(text: "自动截屏", isFromUser: true, imageData: imageData)
             
-            DispatchQueue.main.async {
-                self.modelContext.insert(systemMessage)
-            }
-            
-            Task {
+            Task { @MainActor in
+                modelContext.insert(systemMessage)
+                
                 do {
                     let aiResponse = try await ollamaService.analyzeImage(image: image)
+                    let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
+                    modelContext.insert(aiMessage)
+                    isProcessing = false
                     
-                    DispatchQueue.main.async {
-                        let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
-                        self.modelContext.insert(aiMessage)
-                        self.isProcessing = false
-                        
-                        // Update app state with encouragement
-                        self.appState.updateLastEncouragement(aiResponse)
-                    }
+                    // Update app state with encouragement
+                    appState.updateLastEncouragement(aiResponse)
                 } catch {
-                    DispatchQueue.main.async {
-                        let errorMessage = "AI response failed: \(error.localizedDescription)"
-                        let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
-                        self.modelContext.insert(aiMessage)
-                        self.isProcessing = false
-                    }
+                    let errorMessage = "AI response failed: \(error.localizedDescription)"
+                    let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
+                    modelContext.insert(aiMessage)
+                    isProcessing = false
                 }
             }
         }
@@ -242,20 +235,20 @@ struct ChatView: View {
             imageData = image.tiffRepresentation
         }
         
-        // Create and save user message
-        let userMessage = ChatMessage(text: trimmedText, isFromUser: true, imageData: imageData)
-        modelContext.insert(userMessage)
-        
-        // Clear input
-        messageText = ""
-        selectedImage = nil
-        
-        // Process AI response
-        isProcessing = true
-        
-        Task {
+        Task { @MainActor in
+            // Create and save user message
+            let userMessage = ChatMessage(text: trimmedText, isFromUser: true, imageData: imageData)
+            modelContext.insert(userMessage)
+            
+            // Clear input
+            messageText = ""
+            selectedImage = nil
+            
+            // Process AI response
+            isProcessing = true
+            
             do {
-                var aiResponse: String
+                let aiResponse: String
                 
                 if let imageData = imageData, let cgImage = NSImage(data: imageData)?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
                     // If there's an image, use image analysis
@@ -266,103 +259,32 @@ struct ChatView: View {
                 }
                 
                 // Create and save AI response message
-                DispatchQueue.main.async {
-                    let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
-                    self.modelContext.insert(aiMessage)
-                    self.isProcessing = false
-                    
-                    // If settings allow, show barrage and read aloud
-                    self.appState.updateLastEncouragement(aiResponse)
-                }
+                let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
+                modelContext.insert(aiMessage)
+                isProcessing = false
+                
+                // If settings allow, show barrage and read aloud
+                appState.updateLastEncouragement(aiResponse)
             } catch {
                 print("AI response generation failed: \(error)")
                 
                 // Create error message
-                DispatchQueue.main.async {
-                    let errorMessage: String
-                    if let aiError = error as? AIServiceError {
-                        errorMessage = "AI response failed: \(aiError.errorDescription ?? "Unknown error")"
-                    } else {
-                        errorMessage = "AI response failed: \(error.localizedDescription)"
-                    }
-                    
-                    let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
-                    self.modelContext.insert(aiMessage)
-                    self.isProcessing = false
+                let errorMessage: String
+                if let aiError = error as? AIServiceError {
+                    errorMessage = "AI response failed: \(aiError.errorDescription ?? "Unknown error")"
+                } else {
+                    errorMessage = "AI response failed: \(error.localizedDescription)"
                 }
+                
+                let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
+                modelContext.insert(aiMessage)
+                isProcessing = false
             }
         }
     }
 }
 
-struct CountdownView: View {
-    @State private var countdown = 3
-    let onComplete: () -> Void
-    
-    var body: some View {
-        VStack {
-            Text("\(countdown)")
-                .font(.system(size: 48, weight: .bold))
-                .onAppear {
-                    startCountdown()
-                }
-        }
-        .frame(width: 200, height: 100)
-    }
-    
-    private func startCountdown() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            countdown -= 1
-            
-            if countdown <= 0 {
-                timer.invalidate()
-                onComplete()
-            }
-        }
-    }
-}
 
-struct MessageBubble: View {
-    let message: ChatMessage
-    
-    var body: some View {
-        HStack {
-            if message.isFromUser {
-                Spacer()
-            }
-            
-            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 6) {
-                // If there's an image, display it
-                if let imageData = message.imageData, let nsImage = NSImage(data: imageData) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 200, maxHeight: 200)
-                        .cornerRadius(8)
-                }
-                
-                // If there's text, display it
-                if !message.text.isEmpty {
-                    Text(message.text)
-                        .padding(10)
-                        .background(message.isFromUser ? Color.blue : Color.gray.opacity(0.3))
-                        .foregroundColor(message.isFromUser ? .white : .primary)
-                        .cornerRadius(16)
-                }
-                
-                // Timestamp
-                Text(message.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            
-            if !message.isFromUser {
-                Spacer()
-            }
-        }
-        .padding(.horizontal)
-    }
-}
 
 #Preview {
     ChatView(ollamaService: AIService(settings: AppSettings()), screenCaptureManager: ScreenCaptureManager())

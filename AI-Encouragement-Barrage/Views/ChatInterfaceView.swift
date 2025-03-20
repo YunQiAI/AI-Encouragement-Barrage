@@ -35,7 +35,7 @@ struct ChatInterfaceView: View {
                 ConversationDetailView(
                     aiService: aiService,
                     screenCaptureManager: screenCaptureManager,
-                    conversation: nil
+                    conversation: Conversation(messages: [])
                 )
                 .frame(minWidth: 500)
             }

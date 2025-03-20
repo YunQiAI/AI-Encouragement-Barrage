@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct ConversationListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Conversation.updatedAt, order: .reverse) private var conversations: [Conversation]
@@ -75,7 +76,9 @@ struct ConversationListView: View {
                                 Divider()
                                 
                                 Button(role: .destructive, action: {
-                                    deleteConversation(conversation)
+                                    Task {
+                                        await deleteConversation(conversation)
+                                    }
                                 }) {
                                     Label("删除", systemImage: "trash")
                                 }
@@ -91,7 +94,9 @@ struct ConversationListView: View {
             
             Button("取消", role: .cancel) {}
             Button("创建") {
-                createNewConversation()
+                Task {
+                    await createNewConversation()
+                }
             }
         } message: {
             Text("请输入新对话的标题")
@@ -107,8 +112,9 @@ struct ConversationListView: View {
             }
             Button("重命名") {
                 if let conversation = editingConversation {
-                    conversation.title = editingTitle
-                    conversation.updateTimestamp()
+                    Task {
+                        await updateConversationTitle(conversation)
+                    }
                 }
                 editingConversation = nil
             }
@@ -116,31 +122,35 @@ struct ConversationListView: View {
             Text("请输入新的对话标题")
         }
         .onAppear {
-            // 如果没有选中的会话但有会话列表，选择第一个
-            if appState.selectedConversationID == nil && !conversations.isEmpty {
-                appState.selectConversation(conversations.first?.id)
-            }
-            
-            // 如果没有会话，创建一个默认会话
-            if conversations.isEmpty {
-                createDefaultConversation()
+            Task {
+                // 如果没有选中的会话但有会话列表，选择第一个
+                if appState.selectedConversationID == nil && !conversations.isEmpty {
+                    appState.selectConversation(conversations.first?.id)
+                }
+                
+                // 如果没有会话，创建一个默认会话
+                if conversations.isEmpty {
+                    await createDefaultConversation()
+                }
             }
         }
     }
     
-    private func createNewConversation() {
+    private func createNewConversation() async {
         let conversation = Conversation(title: newConversationTitle)
         modelContext.insert(conversation)
+        try? modelContext.save()
         appState.selectConversation(conversation.id)
     }
     
-    private func createDefaultConversation() {
+    private func createDefaultConversation() async {
         let conversation = Conversation(title: "默认对话")
         modelContext.insert(conversation)
+        try? modelContext.save()
         appState.selectConversation(conversation.id)
     }
     
-    private func deleteConversation(_ conversation: Conversation) {
+    private func deleteConversation(_ conversation: Conversation) async {
         // 如果删除的是当前选中的会话，选择另一个会话
         if conversation.id == appState.selectedConversationID {
             let remainingConversations = conversations.filter { $0.id != conversation.id }
@@ -148,6 +158,13 @@ struct ConversationListView: View {
         }
         
         modelContext.delete(conversation)
+        try? modelContext.save()
+    }
+    
+    private func updateConversationTitle(_ conversation: Conversation) async {
+        conversation.title = editingTitle
+        conversation.updateTimestamp()
+        try? modelContext.save()
     }
 }
 

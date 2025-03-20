@@ -26,7 +26,7 @@ class AppState: ObservableObject {
             UserDefaults.standard.set(isScreenAnalysisActive, forKey: "ScreenAnalysisActive")
             
             // 记录日志
-            print("屏幕监控状态变更: \(isScreenAnalysisActive)")
+            print("【日志1】屏幕监控状态变更: \(isScreenAnalysisActive)")
         }
     }
     
@@ -44,9 +44,11 @@ class AppState: ObservableObject {
     }
     
     func triggerTestBarrages() {
-        shouldTestBarrages = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.shouldTestBarrages = false
+        // 避免在视图更新中直接修改状态
+        Task { @MainActor in
+            shouldTestBarrages = true
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            shouldTestBarrages = false
         }
     }
     

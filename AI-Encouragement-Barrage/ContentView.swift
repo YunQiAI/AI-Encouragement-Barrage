@@ -76,6 +76,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: appState.isScreenAnalysisActive) { _, isActive in
+            print("【日志2】ContentView检测到isScreenAnalysisActive变化: \(isActive)")
             if isActive {
                 startScreenAnalysis()
             } else {
@@ -160,7 +161,11 @@ struct ContentView: View {
     }
     
     private func migrateData() async {
-        await dataMigrationHelper?.migrateChatsToConversations()
+        do {
+            try await dataMigrationHelper?.migrateChatsToConversations()
+        } catch {
+            print("数据迁移失败: \(error.localizedDescription)")
+        }
     }
     
     private func setupNotificationObservers() {
@@ -249,31 +254,52 @@ struct ContentView: View {
         barrageOverlayWindow?.clearAllBarrages()
         barrageOverlayWindow?.hide()
     }
-    
     // 启动屏幕分析功能 - 将截屏结果发送到当前会话
     private func startScreenAnalysis() {
-        print("启动屏幕分析功能")
+        print("【日志3】启动屏幕分析功能")
         
         // 使用设置中的截图间隔
         let captureInterval = currentSettings.captureInterval
+        print("【日志4】设置截图间隔: \(captureInterval)秒")
         screenCaptureManager?.setCaptureInterval(captureInterval)
         
+        // 检查screenCaptureManager是否为nil
+        if screenCaptureManager == nil {
+            print("【错误】screenCaptureManager为nil")
+            return
+        }
+        
         // 启动截图功能，将截图发送到当前选中的会话
+        print("【日志5】调用screenCaptureManager.startCapturing")
         screenCaptureManager?.startCapturing { [self] image in
-            guard let image = image else { return }
+            print("【日志6】截图回调被触发")
+            
+            guard let image = image else {
+                print("【错误】截图为nil")
+                return
+            }
+            print("【日志7】成功获取截图，尺寸: \(image.width) x \(image.height)")
             
             // 获取当前选中的会话ID
             guard let selectedID = appState.selectedConversationID else {
-                print("没有选中的会话，无法发送截屏")
+                print("【错误】没有选中的会话，无法发送截屏")
                 return
             }
+            print("【日志8】当前选中的会话ID: \(selectedID)")
             
             // 将截屏转换为NSImage
+            print("【日志9】将CGImage转换为NSImage")
             let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
             let imageData = nsImage.tiffRepresentation
             
+            if imageData == nil {
+                print("【错误】无法获取图像数据")
+                return
+            }
+            print("【日志10】成功获取图像数据，大小: \(imageData?.count ?? 0) 字节")
+            
             // 使用NotificationCenter发送截图到当前会话
-            // 这样可以避免直接使用modelContext
+            print("【日志11】发送ScreenCaptureReceived通知")
             NotificationCenter.default.post(
                 name: NSNotification.Name("ScreenCaptureReceived"),
                 object: nil,
@@ -285,10 +311,13 @@ struct ContentView: View {
             )
             
             // 分析图像
+            print("【日志12】开始分析图像")
             Task {
                 do {
                     if let aiService = self.aiService {
+                        print("【日志13】调用aiService.analyzeImage")
                         let aiResponse = try await aiService.analyzeImage(image: image)
+                        print("【日志14】AI分析完成: \(aiResponse.prefix(50))...")
                         
                         // 更新最新鼓励消息
                         self.appState.updateLastEncouragement(aiResponse)
@@ -297,9 +326,11 @@ struct ContentView: View {
                         let sentences = aiResponse.components(separatedBy: ["。", "！", "？", ".", "!", "?"])
                             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                         
+                        print("【日志15】添加到弹幕队列: \(sentences.count) 条消息")
                         self.barrageQueue?.enqueueMultiple(sentences)
                         
                         // 发送AI回复到当前会话
+                        print("【日志16】发送AIResponseReceived通知")
                         NotificationCenter.default.post(
                             name: NSNotification.Name("AIResponseReceived"),
                             object: nil,
@@ -309,17 +340,24 @@ struct ContentView: View {
                                 "timestamp": Date()
                             ]
                         )
+                    } else {
+                        print("【错误】aiService为nil")
                     }
                 } catch {
-                    print("处理截屏失败: \(error.localizedDescription)")
+                    print("【错误】处理截屏失败: \(error.localizedDescription)")
                 }
             }
         }
     }
     // 停止屏幕分析功能
     private func stopScreenAnalysis() {
-        print("停止屏幕分析功能")
-        screenCaptureManager?.stopCapturing()
+        print("【日志17】停止屏幕分析功能")
+        if screenCaptureManager == nil {
+            print("【错误】screenCaptureManager为nil，无法停止截图")
+        } else {
+            screenCaptureManager?.stopCapturing()
+            print("【日志18】已调用screenCaptureManager.stopCapturing()")
+        }
     }
     
     private func sendTestBarrages() {

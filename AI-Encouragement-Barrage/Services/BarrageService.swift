@@ -10,6 +10,7 @@ import SwiftUI
 import SwiftData
 
 /// 弹幕服务 - 负责弹幕的高级管理和与其他服务的集成
+@MainActor
 class BarrageService: ObservableObject {
     /// 弹幕窗口
     private var barrageWindow: BarrageOverlayWindow
@@ -58,7 +59,9 @@ class BarrageService: ObservableObject {
         loadSettings()
         
         // 加载历史消息
-        loadMessageHistory()
+        Task {
+            await loadMessageHistory()
+        }
         
         // 显示或隐藏弹幕窗口
         if isVisible {
@@ -94,7 +97,9 @@ class BarrageService: ObservableObject {
         
         // 保存到历史记录
         if saveToHistory {
-            saveMessage(text: text, context: context)
+            Task {
+                await saveMessage(text: text, context: context)
+            }
         }
     }
     
@@ -122,7 +127,9 @@ class BarrageService: ObservableObject {
         
         // 保存到历史记录
         if saveToHistory {
-            saveMessage(text: text, context: context)
+            Task {
+                await saveMessage(text: text, context: context)
+            }
         }
     }
     
@@ -190,7 +197,7 @@ class BarrageService: ObservableObject {
     }
     
     /// 加载历史消息
-    private func loadMessageHistory() {
+    private func loadMessageHistory() async {
         guard let modelContext = modelContext else { return }
         
         do {
@@ -204,30 +211,25 @@ class BarrageService: ObservableObject {
     }
     
     /// 保存消息到历史记录
-    private func saveMessage(text: String, context: String?) {
+    private func saveMessage(text: String, context: String?) async {
+        guard let modelContext = modelContext else { return }
+        
         // 创建新消息
         let message = EncouragementMessage(text: text, context: context)
         
-        // 确保所有UI更新和数据库操作都在主线程上执行
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            // 添加到内存中的历史记录
-            self.messageHistory.insert(message, at: 0)
-            if self.messageHistory.count > 100 {
-                self.messageHistory.removeLast()
-            }
-            
-            // 保存到数据库
-            if let modelContext = self.modelContext {
-                modelContext.insert(message)
-                
-                do {
-                    try modelContext.save()
-                } catch {
-                    print("保存消息失败: \(error.localizedDescription)")
-                }
-            }
+        // 添加到内存中的历史记录
+        messageHistory.insert(message, at: 0)
+        if messageHistory.count > 100 {
+            messageHistory.removeLast()
+        }
+        
+        // 保存到数据库
+        modelContext.insert(message)
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("保存消息失败: \(error.localizedDescription)")
         }
     }
 }

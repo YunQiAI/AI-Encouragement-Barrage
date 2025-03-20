@@ -22,7 +22,7 @@ struct ConversationDetailView: View {
     @State private var isEditingTitle: Bool = false
     @State private var editingTitle: String = ""
     
-    var conversation: Conversation?
+    var conversation: Conversation
     
     var body: some View {
         VStack(spacing: 0) {
@@ -30,10 +30,8 @@ struct ConversationDetailView: View {
             HStack {
                 if isEditingTitle {
                     TextField("对话标题", text: $editingTitle, onCommit: {
-                        if let conversation = conversation {
-                            conversation.title = editingTitle
-                            conversation.updateTimestamp()
-                        }
+                        conversation.title = editingTitle
+                        conversation.updateTimestamp()
                         isEditingTitle = false
                     })
                     .textFieldStyle(.plain)
@@ -45,14 +43,12 @@ struct ConversationDetailView: View {
                         isEditingTitle = false
                     }
                 } else {
-                    Text(conversation?.title ?? "无对话")
+                    Text(conversation.title)
                         .font(.headline)
                         .padding(.leading)
                         .onTapGesture(count: 2) {
-                            if let conversation = conversation {
-                                editingTitle = conversation.title
-                                isEditingTitle = true
-                            }
+                            editingTitle = conversation.title
+                            isEditingTitle = true
                         }
                 }
                 
@@ -81,94 +77,84 @@ struct ConversationDetailView: View {
             
             Divider()
             
-            if conversation == nil {
-                // 无选中会话时的提示
-                VStack {
-                    Spacer()
-                    Text("请选择或创建一个对话")
-                        .foregroundColor(.secondary)
-                    Spacer()
+            // 聊天历史
+            ChatHistoryView(conversation: conversation)
+            
+            Divider()
+            
+            // 输入区域
+            HStack(alignment: .bottom, spacing: 8) {
+                // 截图按钮
+                Button(action: captureAndSendScreenshot) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
                 }
-            } else {
-                // 聊天历史
-                ChatHistoryView(conversation: conversation!)
+                .buttonStyle(.plain)
+                .help("截取屏幕")
+                .disabled(isProcessing)
                 
-                Divider()
+                // 图片选择按钮
+                Button(action: selectImage) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("添加图片")
+                .disabled(isProcessing)
                 
-                // 输入区域
-                HStack(alignment: .bottom, spacing: 8) {
-                    // 截图按钮
-                    Button(action: captureAndSendScreenshot) {
-                        Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 20))
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
-                    .help("截取屏幕")
-                    .disabled(isProcessing)
-                    
-                    // 图片选择按钮
-                    Button(action: selectImage) {
-                        Image(systemName: "photo")
-                            .font(.system(size: 20))
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
-                    .help("添加图片")
-                    .disabled(isProcessing)
-                    
-                    // 图片预览（如果有）
-                    if let selectedImage = selectedImage {
-                        ZStack(alignment: .topTrailing) {
-                            Image(nsImage: selectedImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 60)
-                                .cornerRadius(8)
-                            
-                            Button(action: { self.selectedImage = nil }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.white)
-                                    .background(Circle().fill(Color.black.opacity(0.6)))
-                            }
-                            .buttonStyle(.plain)
-                            .padding(2)
+                // 图片预览（如果有）
+                if let selectedImage = selectedImage {
+                    ZStack(alignment: .topTrailing) {
+                        Image(nsImage: selectedImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 60)
+                            .cornerRadius(8)
+                        
+                        Button(action: { self.selectedImage = nil }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white)
+                                .background(Circle().fill(Color.black.opacity(0.6)))
                         }
+                        .buttonStyle(.plain)
+                        .padding(2)
                     }
-                    
-                    // 文本输入框
-                    TextField("输入消息...", text: $messageText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .padding(8)
-                        .background(Color(.textBackgroundColor).opacity(0.1))
-                        .cornerRadius(16)
-                        .lineLimit(1...5)
-                        .disabled(isProcessing)
-                    
-                    // 发送按钮
-                    Button(action: sendMessage) {
-                        Image(systemName: "paperplane.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil || isProcessing || conversation == nil)
-                    .help("发送消息")
                 }
-                .padding()
-                .background(Color(.windowBackgroundColor))
                 
-                // 状态区域
-                HStack {
-                    Text(isProcessing ? "AI正在处理..." : "就绪")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
+                // 文本输入框
+                TextField("输入消息...", text: $messageText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color(.textBackgroundColor).opacity(0.1))
+                    .cornerRadius(16)
+                    .lineLimit(1...5)
+                    .disabled(isProcessing)
+                
+                // 发送按钮
+                Button(action: sendMessage) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                .background(Color(.windowBackgroundColor))
+                .buttonStyle(.plain)
+                .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil || isProcessing)
+                .help("发送消息")
             }
+            .padding()
+            .background(Color(.windowBackgroundColor))
+            
+            // 状态区域
+            HStack {
+                Text(isProcessing ? "AI正在处理..." : "就绪")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .background(Color(.windowBackgroundColor))
         }
         .onChange(of: appState.selectedConversationID) { _, _ in
             // 清除输入状态
@@ -178,9 +164,7 @@ struct ConversationDetailView: View {
         }
         .onAppear {
             // 确保ScreenCaptureManager知道当前会话
-            if let conversation = conversation {
-                appState.selectConversation(conversation.id)
-            }
+            appState.selectConversation(conversation.id)
             
             // 加载保存的设置
             appState.loadSavedSettings()
@@ -193,7 +177,10 @@ struct ConversationDetailView: View {
             removeNotificationObservers()
         }
     }
-    
+}
+
+// MARK: - Private Methods
+extension ConversationDetailView {
     private func selectImage() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
@@ -213,8 +200,6 @@ struct ConversationDetailView: View {
     }
     
     private func captureAndSendScreenshot() {
-        guard let conversation = conversation else { return }
-        
         isProcessing = true
         
         // 创建一个倒计时窗口，让用户有时间准备
@@ -300,7 +285,6 @@ struct ConversationDetailView: View {
         countdown.makeKeyAndOrderFront(nil)
     }
     
-    // 设置通知监听器
     private func setupNotificationObservers() {
         // 监听截图通知
         NotificationCenter.default.addObserver(
@@ -308,7 +292,7 @@ struct ConversationDetailView: View {
             object: nil,
             queue: .main
         ) { notification in
-            self.handleScreenCaptureNotification(notification)
+            handleScreenCaptureNotification(notification)
         }
         
         // 监听AI回复通知
@@ -317,11 +301,10 @@ struct ConversationDetailView: View {
             object: nil,
             queue: .main
         ) { notification in
-            self.handleAIResponseNotification(notification)
+            handleAIResponseNotification(notification)
         }
     }
     
-    // 移除通知监听器
     private func removeNotificationObservers() {
         NotificationCenter.default.removeObserver(
             self,
@@ -336,27 +319,37 @@ struct ConversationDetailView: View {
         )
     }
     
-    // 处理截图通知
     private func handleScreenCaptureNotification(_ notification: Notification) {
+        print("【日志19】ConversationDetailView收到截图通知")
+        
         guard let userInfo = notification.userInfo,
               let conversationID = userInfo["conversationID"] as? UUID,
               let imageData = userInfo["imageData"] as? Data else {
-            print("截图通知缺少必要信息")
+            print("【错误】截图通知缺少必要信息")
+            if let userInfo = notification.userInfo {
+                print("【错误】userInfo内容: \(userInfo)")
+            }
             return
         }
         
+        print("【日志20】截图通知包含会话ID: \(conversationID)")
+        print("【日志21】当前会话ID: \(conversation.id.uuidString)")
+        
         // 检查是否是当前会话
-        if conversation?.id == conversationID {
+        if conversation.id == conversationID {
+            print("【日志22】会话ID匹配，添加截图到当前会话")
+            
             // 创建用户消息并添加到会话
             let userMessage = ChatMessage(text: "自动屏幕分析", isFromUser: true, imageData: imageData)
             userMessage.conversationID = conversationID
-            conversation?.addMessage(userMessage)
+            conversation.addMessage(userMessage)
             
-            print("已将截图添加到当前会话")
+            print("【日志23】已将截图添加到当前会话")
+        } else {
+            print("【错误】会话ID不匹配，无法添加截图")
         }
     }
     
-    // 处理AI回复通知
     private func handleAIResponseNotification(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let conversationID = userInfo["conversationID"] as? UUID,
@@ -366,20 +359,19 @@ struct ConversationDetailView: View {
         }
         
         // 检查是否是当前会话
-        if conversation?.id == conversationID {
+        if conversation.id == conversationID {
             // 创建AI回复消息并添加到会话
             let aiMessage = ChatMessage(text: response, isFromUser: false)
             aiMessage.conversationID = conversationID
-            conversation?.addMessage(aiMessage)
+            conversation.addMessage(aiMessage)
             
             print("已将AI回复添加到当前会话")
         }
     }
     
-    // 根据ID查找会话
     private func findConversation(with id: UUID) -> Conversation? {
         // 如果当前会话ID匹配，直接返回
-        if let conversation = conversation, conversation.id == id {
+        if conversation.id == id {
             return conversation
         }
         
@@ -397,8 +389,6 @@ struct ConversationDetailView: View {
     }
     
     private func sendMessage() {
-        guard let conversation = conversation else { return }
-        
         // Ensure there's content to send
         let trimmedText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty || selectedImage != nil else { return }
@@ -436,6 +426,7 @@ struct ConversationDetailView: View {
                 // Create and save AI response message
                 DispatchQueue.main.async {
                     let aiMessage = ChatMessage(text: aiResponse, isFromUser: false)
+                    aiMessage.conversationID = conversation.id
                     conversation.addMessage(aiMessage)
                     self.isProcessing = false
                     
@@ -455,6 +446,7 @@ struct ConversationDetailView: View {
                     }
                     
                     let aiMessage = ChatMessage(text: errorMessage, isFromUser: false)
+                    aiMessage.conversationID = conversation.id
                     conversation.addMessage(aiMessage)
                     self.isProcessing = false
                 }
@@ -463,6 +455,7 @@ struct ConversationDetailView: View {
     }
 }
 
+// MARK: - ChatHistoryView
 struct ChatHistoryView: View {
     @Query var messages: [ChatMessage]
     
@@ -502,6 +495,8 @@ struct ChatHistoryView: View {
         }
     }
 }
+
+// MARK: - CountdownView
 
 #Preview {
     ConversationDetailView(

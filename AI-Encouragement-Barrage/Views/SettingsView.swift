@@ -8,11 +8,13 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var appSettings: [AppSettings]
     @State private var settings: AppSettings
     @State private var showSaveMessage: Bool = false
+    @State private var isSaving: Bool = false
     
     // Custom test voice text
     @Binding var testVoiceText: String
@@ -69,9 +71,12 @@ struct SettingsView: View {
                     Spacer()
                     
                     Button("Save Settings") {
-                        saveSettings()
+                        Task {
+                            await saveSettings()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isSaving)
                 }
                 .padding(.top, 10)
                 
@@ -101,10 +106,17 @@ struct SettingsView: View {
             let newSettings = AppSettings()
             modelContext.insert(newSettings)
             settings = newSettings
+            
+            Task {
+                try? await saveContext()
+            }
         }
     }
     
-    private func saveSettings() {
+    private func saveSettings() async {
+        isSaving = true
+        defer { isSaving = false }
+        
         if let existingSettings = appSettings.first {
             // Update all settings from our state
             existingSettings.captureInterval = settings.captureInterval
@@ -129,11 +141,12 @@ struct SettingsView: View {
         }
         
         do {
-            try modelContext.save()
+            try await saveContext()
             showSaveMessage = true
             
             // Hide save message after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            Task {
+                try await Task.sleep(nanoseconds: 3_000_000_000)
                 showSaveMessage = false
             }
             
@@ -146,6 +159,10 @@ struct SettingsView: View {
         } catch {
             print("Failed to save settings: \(error)")
         }
+    }
+    
+    private func saveContext() async throws {
+        try modelContext.save()
     }
     
     private func resetToDefault() {
