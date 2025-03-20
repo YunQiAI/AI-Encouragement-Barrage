@@ -10,7 +10,7 @@ import AppKit
 import CoreGraphics
 
 // Service for interacting with Azure OpenAI API
-class AzureAPIService {
+class AzureAPIService: AIServiceProtocol {
     private var endpoint: String
     private var deploymentName: String
     private var apiVersion: String
@@ -25,8 +25,22 @@ class AzureAPIService {
         self.modelName = modelName
     }
     
+    // MARK: - AIServiceProtocol
+    
+    var serviceName: String {
+        return "Azure OpenAI API"
+    }
+    
+    var currentModelName: String {
+        return modelName
+    }
+    
+    var supportsStreaming: Bool {
+        return false // Azure API 当前实现不支持流式响应
+    }
+    
     // Send request to Azure OpenAI API
-    func sendRequest(prompt: String, imageBase64: String?) async throws -> String {
+    func sendRequest(prompt: String, imageBase64: String?, useStreaming: Bool = false, streamHandler: ((String) -> Void)? = nil) async throws -> String {
         // Debug log
         print("Sending request to Azure OpenAI API")
         print("Endpoint: \(endpoint)")

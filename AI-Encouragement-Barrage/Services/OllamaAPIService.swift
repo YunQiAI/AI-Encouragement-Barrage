@@ -10,7 +10,7 @@ import AppKit
 import CoreGraphics
 
 // Service for interacting with Ollama API
-class OllamaAPIService {
+class OllamaAPIService: AIServiceProtocol {
     private var serverAddress: String
     private var serverPort: Int
     private var useLocalServer: Bool
@@ -23,6 +23,20 @@ class OllamaAPIService {
         self.useLocalServer = useLocalServer
         self.apiKey = apiKey
         self.modelName = modelName
+    }
+    
+    // MARK: - AIServiceProtocol
+    
+    var serviceName: String {
+        return useLocalServer ? "本地Ollama API" : "远程Ollama API"
+    }
+    
+    var currentModelName: String {
+        return modelName
+    }
+    
+    var supportsStreaming: Bool {
+        return true // Ollama API 支持流式响应
     }
     
     // Fetch available Ollama models

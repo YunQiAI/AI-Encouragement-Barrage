@@ -10,7 +10,7 @@ import AppKit
 import CoreGraphics
 
 // Service for interacting with LM Studio API
-class LMStudioAPIService {
+class LMStudioAPIService: AIServiceProtocol {
     private var serverAddress: String
     private var serverPort: Int
     private var modelName: String
@@ -19,6 +19,20 @@ class LMStudioAPIService {
         self.serverAddress = serverAddress
         self.serverPort = serverPort
         self.modelName = modelName
+    }
+    
+    // MARK: - AIServiceProtocol
+    
+    var serviceName: String {
+        return "LM Studio API"
+    }
+    
+    var currentModelName: String {
+        return modelName
+    }
+    
+    var supportsImageAnalysis: Bool {
+        return false // LM Studio 目前不支持图像分析
     }
     
     // Fetch available LM Studio models
@@ -94,7 +108,7 @@ class LMStudioAPIService {
     }
     
     // Send request to LM Studio API
-    func sendRequest(prompt: String, imageBase64: String?) async throws -> String {
+    func sendRequest(prompt: String, imageBase64: String?, useStreaming: Bool = false, streamHandler: ((String) -> Void)? = nil) async throws -> String {
         // Build API endpoint
         let baseURL = "\(serverAddress):\(serverPort)"
         let endpoint = "\(baseURL)/v1/chat/completions"
@@ -115,7 +129,6 @@ class LMStudioAPIService {
         
         // If image is provided, add it to the user message
         if let imageBase64 = imageBase64 {
-            // LM Studio may not support image input in the same way as OpenAI
             // For now, we'll just add a note about the image
             messages.append([
                 "role": "user",

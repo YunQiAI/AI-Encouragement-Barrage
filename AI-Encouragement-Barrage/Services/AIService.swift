@@ -30,10 +30,8 @@ class AIService: ObservableObject {
     private var lmStudioServerAddress: String
     private var lmStudioServerPort: Int
     
-    // API service instances
-    private var ollamaService: OllamaAPIService?
-    private var azureService: AzureAPIService?
-    private var lmStudioService: LMStudioAPIService?
+    // API service instance
+    private var currentService: AIServiceProtocol?
     
     // Barrage manager reference
     private var barrageManager: BarrageManager?
@@ -102,32 +100,31 @@ class AIService: ObservableObject {
         }
     }
     
-    // Initialize API services
+    // Initialize API service using factory
     private func initializeAPIServices() {
-        // Initialize Ollama service
-        ollamaService = OllamaAPIService(
-            serverAddress: ollamaServerAddress,
-            serverPort: ollamaServerPort,
-            useLocalServer: useLocalOllama,
-            apiKey: apiKey,
-            modelName: apiModelName
-        )
+        // 使用工厂创建当前选择的服务
+        let settings = AppSettings()
+        settings.apiProvider = apiProvider.rawValue
+        settings.apiModelName = apiModelName
+        settings.apiKey = apiKey
+        settings.useStreamingAPI = useStreamingAPI
         
-        // Initialize Azure service
-        azureService = AzureAPIService(
-            endpoint: azureEndpoint,
-            deploymentName: azureDeploymentName,
-            apiVersion: azureAPIVersion,
-            apiKey: apiKey,
-            modelName: apiModelName
-        )
+        // Ollama specific settings
+        settings.ollamaServerAddress = ollamaServerAddress
+        settings.ollamaServerPort = ollamaServerPort
+        settings.useLocalOllama = useLocalOllama
         
-        // Initialize LM Studio service
-        lmStudioService = LMStudioAPIService(
-            serverAddress: lmStudioServerAddress,
-            serverPort: lmStudioServerPort,
-            modelName: apiModelName
-        )
+        // Azure specific settings
+        settings.azureEndpoint = azureEndpoint
+        settings.azureDeploymentName = azureDeploymentName
+        settings.azureAPIVersion = azureAPIVersion
+        
+        // LM Studio specific settings
+        settings.lmStudioServerAddress = lmStudioServerAddress
+        settings.lmStudioServerPort = lmStudioServerPort
+        
+        // 创建服务实例
+        currentService = AIServiceFactory.createService(provider: apiProvider, settings: settings)
     }
     
     // Update configuration
@@ -158,13 +155,13 @@ class AIService: ObservableObject {
         self.lmStudioServerAddress = settings.effectiveLMStudioServerAddress
         self.lmStudioServerPort = settings.effectiveLMStudioServerPort
         
-        // Re-initialize API services with new settings
+        // Re-initialize API service with new settings
         initializeAPIServices()
         
         // If Ollama settings changed, refresh model list
-        if self.apiProvider == .ollama && self.useLocalOllama && 
-           (oldProvider != .ollama || !oldUseLocalOllama || 
-            oldServerAddress != self.ollamaServerAddress || 
+        if self.apiProvider == .ollama && self.useLocalOllama &&
+           (oldProvider != .ollama || !oldUseLocalOllama ||
+            oldServerAddress != self.ollamaServerAddress ||
             oldServerPort != self.ollamaServerPort) {
             Task {
                 await self.fetchOllamaModels()
@@ -172,9 +169,9 @@ class AIService: ObservableObject {
         }
         
         // If LM Studio settings changed, refresh model list
-        if self.apiProvider == .lmStudio && 
-           (oldProvider != .lmStudio || 
-            oldLMStudioAddress != self.lmStudioServerAddress || 
+        if self.apiProvider == .lmStudio &&
+           (oldProvider != .lmStudio ||
+            oldLMStudioAddress != self.lmStudioServerAddress ||
             oldLMStudioPort != self.lmStudioServerPort) {
             Task {
                 await self.fetchLMStudioModels()
@@ -303,10 +300,17 @@ class AIService: ObservableObject {
         modelLoadError = nil
         
         do {
-            if let ollamaService = ollamaService {
-                let models = try await ollamaService.fetchModels()
-                self.availableOllamaModels = models
-            }
+            // 创建临时的Ollama服务来获取模型列表
+            let ollamaService = OllamaAPIService(
+                serverAddress: ollamaServerAddress,
+                serverPort: ollamaServerPort,
+                useLocalServer: useLocalOllama,
+                apiKey: apiKey,
+                modelName: apiModelName
+            )
+            
+            let models = try await ollamaService.fetchModels()
+            self.availableOllamaModels = models
         } catch {
             modelLoadError = error.localizedDescription
             print("Error fetching Ollama models: \(error.localizedDescription)")
@@ -327,10 +331,15 @@ class AIService: ObservableObject {
         modelLoadError = nil
         
         do {
-            if let lmStudioService = lmStudioService {
-                let models = try await lmStudioService.fetchModels()
-                self.availableLMStudioModels = models
-            }
+            // 创建临时的LM Studio服务来获取模型列表
+            let lmStudioService = LMStudioAPIService(
+                serverAddress: lmStudioServerAddress,
+                serverPort: lmStudioServerPort,
+                modelName: apiModelName
+            )
+            
+            let models = try await lmStudioService.fetchModels()
+            self.availableLMStudioModels = models
         } catch {
             modelLoadError = error.localizedDescription
             print("Error fetching LM Studio models: \(error.localizedDescription)")
@@ -383,58 +392,36 @@ class AIService: ObservableObject {
     
     // Send request to appropriate API
     private func sendRequest(prompt: String, imageBase64: String?) async throws -> String {
-        switch apiProvider {
-        case .ollama:
-            guard let ollamaService = ollamaService else {
-                throw AIServiceError.requestFailed
-            }
-            // 使用流式API
-            return try await ollamaService.sendRequest(
-                prompt: prompt, 
-                imageBase64: imageBase64,
-                useStreaming: useStreamingAPI,
-                streamHandler: { [weak self] partial in
-                    // 处理流式响应
-                    guard let self = self else { return }
-                    
-                    // 如果有弹幕管理器，处理流式响应
-                    if let barrageManager = self.barrageManager {
-                        barrageManager.processStreamingResponse(partial)
-                    } else {
-                        // 否则只打印
-                        print("Stream partial: \(partial)")
-                    }
-                }
-            )
-            
-        case .azure:
-            guard let azureService = azureService else {
-                throw AIServiceError.requestFailed
-            }
-            let response = try await azureService.sendRequest(prompt: prompt, imageBase64: imageBase64)
-            
-            // 如果有弹幕管理器，处理完整响应
-            if let barrageManager = self.barrageManager {
-                barrageManager.addMultipleBarrages(text: response)
-            }
-            
-            return response
-            
-        case .lmStudio:
-            guard let lmStudioService = lmStudioService else {
-                throw AIServiceError.requestFailed
-            }
-            let response = try await lmStudioService.sendRequest(prompt: prompt, imageBase64: imageBase64)
-            
-            // 如果有弹幕管理器，处理完整响应
-            if let barrageManager = self.barrageManager {
-                barrageManager.addMultipleBarrages(text: response)
-            }
-            
-            return response
-            
-        default:
-            throw AIServiceError.unsupportedProvider(provider: apiProvider.rawValue)
+        guard let service = currentService else {
+            throw AIServiceError.requestFailed
         }
+        
+        // 使用当前服务发送请求
+        let response = try await service.sendRequest(
+            prompt: prompt,
+            imageBase64: imageBase64,
+            useStreaming: useStreamingAPI,
+            streamHandler: { [weak self] partial in
+                // 处理流式响应
+                guard let self = self else { return }
+                
+                // 如果有弹幕管理器，处理流式响应
+                if let barrageManager = self.barrageManager {
+                    barrageManager.processStreamingResponse(partial)
+                } else {
+                    // 否则只打印
+                    print("Stream partial: \(partial)")
+                }
+            }
+        )
+        
+        // 如果不是流式响应或者服务不支持流式响应，处理完整响应
+        if !useStreamingAPI || !service.supportsStreaming {
+            if let barrageManager = self.barrageManager {
+                barrageManager.addMultipleBarrages(text: response)
+            }
+        }
+        
+        return response
     }
 }
