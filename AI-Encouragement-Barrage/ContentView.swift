@@ -70,6 +70,35 @@ struct ContentView: View {
             }
             .padding(.horizontal)
             
+            // 语音开关和弹幕显示模式
+            HStack {
+                // 语音开关
+                Toggle(isOn: $settings.speechEnabled) {
+                    HStack {
+                        Image(systemName: settings.speechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                        Text(settings.speechEnabled ? "语音开启" : "语音关闭")
+                    }
+                }
+                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                .onChange(of: settings.speechEnabled) { _, _ in
+                    appState.updateSettings(settings)
+                }
+                
+                Spacer()
+                
+                // 弹幕显示模式
+                Picker("显示模式", selection: $settings.barrageDisplayMode) {
+                    Text("分散模式").tag("scattered")
+                    Text("线性模式").tag("linear")
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .frame(width: 180)
+                .onChange(of: settings.barrageDisplayMode) { _, _ in
+                    appState.updateSettings(settings)
+                }
+            }
+            .padding(.horizontal)
+            
             // 状态提示
             if appState.currentContext.isEmpty {
                 Text("请输入内容，然后生成弹幕")
@@ -155,7 +184,7 @@ struct ContentView: View {
             
             Spacer()
         }
-        .frame(width: 400, height: showSettings ? 400 : 250)
+        .frame(width: 400, height: showSettings ? 450 : 300)
         .animation(.easeInOut, value: showSettings)
         .onAppear {
             initializeServices()
@@ -163,17 +192,17 @@ struct ContentView: View {
     }
     
     private func initializeServices() {
-        // 创建弹幕服务
-        barrageService = BarrageService(appState: appState)
-        
         // 创建AI服务
         aiService = AIService(settings: settings)
+        
+        // 创建弹幕服务
+        barrageService = BarrageService(appState: appState, settings: settings)
         
         // 将服务注入AppState
         if let barrageService = barrageService,
            let aiService = aiService {
             Task { @MainActor in
-                appState.initialize(barrageService: barrageService, aiService: aiService)
+                appState.initialize(barrageService: barrageService, aiService: aiService, settings: settings)
             }
         }
     }

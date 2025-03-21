@@ -45,6 +45,20 @@ class AppSettings: ObservableObject {
         }
     }
     
+    // 语音设置
+    @Published var speechEnabled: Bool {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // 弹幕显示模式
+    @Published var barrageDisplayMode: String {
+        didSet {
+            saveSettings()
+        }
+    }
+    
     // 测试结果
     @Published var testResult: String = ""
     @Published var isTesting: Bool = false
@@ -54,7 +68,9 @@ class AppSettings: ObservableObject {
         apiModelName: String = "gemma:2b",
         apiKey: String = "",
         barrageSpeed: Double = 100.0,
-        barrageDirection: String = "rightToLeft"
+        barrageDirection: String = "rightToLeft",
+        speechEnabled: Bool = true,
+        barrageDisplayMode: String = "scattered"
     ) {
         // 从UserDefaults加载设置
         self.apiProvider = UserDefaults.standard.string(forKey: "apiProvider") ?? apiProvider
@@ -62,6 +78,8 @@ class AppSettings: ObservableObject {
         self.apiKey = UserDefaults.standard.string(forKey: "apiKey") ?? apiKey
         self.barrageSpeed = UserDefaults.standard.double(forKey: "barrageSpeed") > 0 ? UserDefaults.standard.double(forKey: "barrageSpeed") : barrageSpeed
         self.barrageDirection = UserDefaults.standard.string(forKey: "barrageDirection") ?? barrageDirection
+        self.speechEnabled = UserDefaults.standard.object(forKey: "speechEnabled") != nil ? UserDefaults.standard.bool(forKey: "speechEnabled") : speechEnabled
+        self.barrageDisplayMode = UserDefaults.standard.string(forKey: "barrageDisplayMode") ?? barrageDisplayMode
     }
     
     // 保存设置到UserDefaults
@@ -71,6 +89,8 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(apiKey, forKey: "apiKey")
         UserDefaults.standard.set(barrageSpeed, forKey: "barrageSpeed")
         UserDefaults.standard.set(barrageDirection, forKey: "barrageDirection")
+        UserDefaults.standard.set(speechEnabled, forKey: "speechEnabled")
+        UserDefaults.standard.set(barrageDisplayMode, forKey: "barrageDisplayMode")
     }
     
     // 获取有效的API提供者

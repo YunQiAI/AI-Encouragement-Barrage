@@ -15,9 +15,6 @@ class BarrageLibrary: ObservableObject {
     // 用于追踪每条弹幕的显示次数
     private var displayCounts: [UUID: Int] = [:]
     
-    // 异步更新的阈值（当70%的弹幕都显示过后触发更新）
-    private let updateThreshold: Double = 0.7
-    
     // AI服务
     private let aiService: AIService
     
@@ -30,6 +27,9 @@ class BarrageLibrary: ObservableObject {
     
     // 设置上下文并初始生成弹幕
     func setContext(_ context: String) async throws {
+        // 每次设置新上下文时，清空弹幕库
+        clearLibrary()
+        
         currentContext = context
         try await generateInitialBarrages()
     }
@@ -51,51 +51,7 @@ class BarrageLibrary: ObservableObject {
         let currentCount = displayCounts[barrage.id] ?? 0
         displayCounts[barrage.id] = currentCount + 1
         
-        // 检查是否需要异步更新弹幕库
-        checkAndUpdateBarrages()
-        
         return barrage
-    }
-    
-    // 检查并异步更新弹幕库
-    private func checkAndUpdateBarrages() {
-        // 计算已显示过的弹幕比例
-        let displayedCount = displayCounts.count
-        let totalCount = barrages.count
-        let displayRatio = Double(displayedCount) / Double(totalCount)
-        
-        // 如果达到阈值，异步生成新弹幕
-        if displayRatio >= updateThreshold {
-            Task {
-                try? await generateMoreBarrages()
-            }
-        }
-    }
-    
-    // 异步生成30-50条新弹幕
-    private func generateMoreBarrages() async throws {
-        // 设置提示词，要求生成30-50条新的不重复的弹幕
-        let prompt = """
-        基于以下上下文，生成30-50条新的、不重复的、积极鼓励的弹幕消息：
-        
-        上下文：\(currentContext)
-        
-        注意：生成的弹幕要有变化，不要重复，要保持积极正面的语气。每条弹幕不超过20个字符，每条弹幕占一行。
-        """
-        
-        let response = try await aiService.analyzeText(text: prompt)
-        processAndAddBarrages(response)
-        
-        // 重置部分显示计数，以便新生成的弹幕有更高的显示机会
-        if displayCounts.count > 50 {
-            // 保留最近显示次数少的弹幕的计数
-            let sortedIds = displayCounts.sorted { $0.value < $1.value }.prefix(20).map { $0.key }
-            var newCounts: [UUID: Int] = [:]
-            for id in sortedIds {
-                newCounts[id] = displayCounts[id]
-            }
-            displayCounts = newCounts
-        }
     }
     
     // 处理AI响应并添加到弹幕库
@@ -105,11 +61,38 @@ class BarrageLibrary: ObservableObject {
             .components(separatedBy: .newlines)
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .map { text in
-                EncouragementMessage(text: text, context: currentContext)
+                // 过滤特殊字符和序列
+                let filteredText = filterSpecialCharacters(text)
+                return EncouragementMessage(text: filteredText, context: currentContext)
             }
+            .filter { !$0.text.isEmpty } // 过滤掉空文本
         
         // 添加到弹幕库
         barrages.append(contentsOf: newBarrages)
+    }
+    
+    // 过滤特殊字符和序列
+    private func filterSpecialCharacters(_ text: String) -> String {
+        // 1. 移除数字序号和前缀（如"1. "、"- "等）
+        var filteredText = text.replacingOccurrences(of: "^\\d+\\.\\s*|^-\\s*|^•\\s*", with: "", options: .regularExpression)
+        
+        // 2. 移除引号
+        filteredText = filteredText.replacingOccurrences(of: "[\"']", with: "", options: .regularExpression)
+        
+        // 3. 移除Markdown标记
+        filteredText = filteredText.replacingOccurrences(of: "[*_~`]", with: "", options: .regularExpression)
+        
+        // 4. 移除表情符号
+        let emojiPattern = try! NSRegularExpression(pattern: "[\\p{Emoji}]", options: [])
+        filteredText = emojiPattern.stringByReplacingMatches(in: filteredText, options: [], range: NSRange(location: 0, length: filteredText.utf16.count), withTemplate: "")
+        
+        // 5. 移除控制字符
+        filteredText = filteredText.components(separatedBy: CharacterSet.controlCharacters).joined()
+        
+        // 6. 移除多余的空格
+        filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return filteredText
     }
     
     // 清除弹幕库

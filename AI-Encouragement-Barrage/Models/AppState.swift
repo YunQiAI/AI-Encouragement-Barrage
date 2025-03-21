@@ -30,6 +30,9 @@ class AppState: ObservableObject {
     private var barrageLibrary: BarrageLibrary?
     private var aiService: AIService?
     
+    // 设置
+    private var settings: AppSettings?
+    
     // 弹幕定时器
     private var barrageTimer: Timer?
     
@@ -38,9 +41,10 @@ class AppState: ObservableObject {
     
     init() {}
     
-    func initialize(barrageService: BarrageService, aiService: AIService) {
+    func initialize(barrageService: BarrageService, aiService: AIService, settings: AppSettings) {
         self.barrageService = barrageService
         self.aiService = aiService
+        self.settings = settings
         self.barrageLibrary = BarrageLibrary(aiService: aiService)
         
         // 加载保存的状态
@@ -57,9 +61,15 @@ class AppState: ObservableObject {
         await MainActor.run {
             currentContext = context
             isProcessing = true
+            
+            // 如果弹幕正在显示，先停止
+            if isBarrageActive {
+                stopBarrage()
+            }
         }
         
         do {
+            // 设置新上下文会清空弹幕库并生成新弹幕
             try await barrageLibrary.setContext(context)
             
             // 在主线程上更新UI状态和启动弹幕
@@ -80,7 +90,7 @@ class AppState: ObservableObject {
     
     // 开始显示弹幕
     private func startBarrage() {
-        guard let barrageService = barrageService, let barrageLibrary = barrageLibrary else { return }
+        guard let barrageLibrary = barrageLibrary else { return }
         
         stopBarrage() // 确保先停止现有的定时器
         
@@ -117,6 +127,12 @@ class AppState: ObservableObject {
             print("请先设置上下文")
             isBarrageActive = false
         }
+    }
+    
+    // 更新设置
+    func updateSettings(_ newSettings: AppSettings) {
+        self.settings = newSettings
+        barrageService?.updateSettings(newSettings)
     }
     
     deinit {
