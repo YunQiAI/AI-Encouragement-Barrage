@@ -90,8 +90,8 @@ class AppState: ObservableObject {
             
             // 使用Task在主线程上执行MainActor隔离的方法
             Task { @MainActor in
-                if let barrage = barrageLibrary.getRandomBarrage() {
-                    barrageService.showBarrage(text: barrage.text)
+                if let barrage = self.barrageLibrary?.getRandomBarrage() {
+                    self.barrageService?.showBarrage(text: barrage.text)
                 }
             }
         }
