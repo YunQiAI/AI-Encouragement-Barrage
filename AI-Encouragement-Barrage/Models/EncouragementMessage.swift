@@ -6,19 +6,18 @@
 //
 
 import Foundation
-import SwiftData
 
-@Model
-final class EncouragementMessage {
-    var id: UUID
-    var text: String
-    var timestamp: Date
-    var context: String?  // 可选，记录生成这条消息时的上下文
+/// 鼓励消息模型
+struct EncouragementMessage: Identifiable {
+    let id: UUID
+    let text: String
+    let context: String?
+    let timestamp: Date
     
     init(text: String, context: String? = nil) {
         self.id = UUID()
         self.text = text
-        self.timestamp = Date()
         self.context = context
+        self.timestamp = Date()
     }
 }
