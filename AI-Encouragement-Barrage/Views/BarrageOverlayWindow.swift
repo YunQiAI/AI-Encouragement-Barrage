@@ -5,11 +5,10 @@
 //  Created by YunQiAI on 2025/03/20.
 //
 
-import Foundation
 import SwiftUI
 import AppKit
 
-// 弹幕覆盖窗口
+/// 弹幕覆盖窗口
 class BarrageOverlayWindow {
     private var window: NSWindow?
     private var engine: BarrageEngine
@@ -51,103 +50,36 @@ class BarrageOverlayWindow {
         self.window = window
     }
     
-    // 显示窗口
+    /// 显示窗口
     func show() {
         window?.orderFront(nil)
     }
     
-    // 隐藏窗口
+    /// 隐藏窗口
     func hide() {
         window?.orderOut(nil)
     }
     
-    // 添加弹幕
-    func addBarrage(text: String, type: BarrageItem.BarrageType = .normal) {
-        engine.addBarrage(text: text, type: type)
+    /// 添加弹幕
+    /// - Parameter text: 弹幕文本
+    func addBarrage(text: String) {
+        engine.addBarrage(text: text)
     }
     
-    // 添加多条弹幕
-    func addMultipleBarrages(text: String, type: BarrageItem.BarrageType = .normal) {
-        engine.addMultipleBarrages(text: text, type: type)
-    }
-    
-    // 处理流式响应
-    func processStreamingResponse(_ partial: String) {
-        engine.processStreamingResponse(partial)
-    }
-    
-    // 清除所有弹幕
+    /// 清除所有弹幕
     func clearAllBarrages() {
         engine.clearAllBarrages()
     }
     
-    // 设置弹幕速度
-    func setSpeed(_ speed: Double) {
-        var config = engine.config
-        config.speed = speed
-        engine.config = config
-    }
-    
-    // 设置弹幕方向
-    func setDirection(_ direction: String) {
-        var config = engine.config
-        if let dir = BarrageConfig.Direction.allCases.first(where: { $0.rawValue == direction }) {
-            config.direction = dir
-            engine.config = config
-        }
-    }
-    
-    // 设置弹幕显示范围
-    func setTravelRange(_ range: Double) {
-        var config = engine.config
-        config.travelRange = range
-        engine.config = config
-    }
-    
-    // 设置弹幕密度
-    func setDensity(_ density: Double) {
-        var config = engine.config
-        config.density = density
-        engine.config = config
-    }
-    
-    // 设置弹幕样式
-    func setStylePreset(_ preset: String) {
-        var config = engine.config
-        if let stylePreset = BarrageConfig.StylePreset.allCases.first(where: { $0.rawValue == preset }) {
-            config.defaultStyle = stylePreset
-            engine.config = config
-        }
-    }
-    
-    // 设置是否使用随机样式
-    func setUseRandomStyle(_ useRandom: Bool) {
-        var config = engine.config
-        config.useRandomStyle = useRandom
-        engine.config = config
-    }
-    
-    // 设置是否启用动画效果
-    func setEnableAnimations(_ enable: Bool) {
-        var config = engine.config
-        config.enableAnimations = enable
-        engine.config = config
-    }
-    
-    // 更新屏幕大小（例如，当屏幕分辨率改变时）
+    /// 更新屏幕大小（例如，当屏幕分辨率改变时）
     func updateScreenSize() {
         guard let screen = NSScreen.main else { return }
         window?.setFrame(screen.frame, display: true)
         engine.updateScreenSize(screen.frame.size)
     }
-    
-    // 获取当前配置
-    func getConfig() -> BarrageConfig {
-        return engine.config
-    }
 }
 
-// 弹幕内容视图
+/// 弹幕内容视图
 struct BarrageContentView: View {
     @ObservedObject var engine: BarrageEngine
     
@@ -159,21 +91,11 @@ struct BarrageContentView: View {
             // 显示所有活跃的弹幕
             ForEach(engine.activeBarrages) { barrage in
                 Text(barrage.text)
-                    .font(.system(size: barrage.style.fontSize, weight: .bold))
-                    .foregroundColor(barrage.style.color)
-                    .shadow(
-                        color: barrage.style.shadowColor,
-                        radius: barrage.style.shadowRadius,
-                        x: barrage.style.shadowOffset.x,
-                        y: barrage.style.shadowOffset.y
-                    )
+                    .font(.system(size: barrage.fontSize))
+                    .foregroundColor(barrage.color)
                     .position(barrage.position)
-                    .opacity(barrage.opacity * barrage.style.opacity)
-                    .modifier(BarrageAnimationModifier(
-                        enableAnimations: engine.config.enableAnimations,
-                        animationEffect: barrage.style.animationEffect,
-                        animationState: barrage.animationState
-                    ))
+                    .opacity(barrage.opacity)
+                    .shadow(color: .black.opacity(0.5), radius: 1, x: 1, y: 1) // 添加阴影提高可读性
             }
         }
         .edgesIgnoringSafeArea(.all)

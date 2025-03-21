@@ -6,177 +6,115 @@
 //
 
 import Foundation
-import SwiftData
+import SwiftUI
 
-@Model
-class AppSettings {
-    // Screen capture interval (seconds)
-    var captureInterval: Double
+class AppSettings: ObservableObject {
+    // API Settings
+    @Published var apiProvider: String {
+        didSet {
+            saveSettings()
+            // 当API提供者改变时，更新模型名称为默认值
+            if let provider = APIProvider(rawValue: apiProvider) {
+                apiModelName = provider.defaultModel
+            }
+        }
+    }
     
-    // Barrage speed (1.0 is normal speed)
-    var barrageSpeed: Double
+    @Published var apiModelName: String {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // Whether to enable speech
-    var speechEnabled: Bool
+    @Published var apiKey: String {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // Voice identifier for Siri TTS
-    var voiceIdentifier: String?
+    // 弹幕设置
+    @Published var barrageSpeed: Double {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // Barrage movement direction - optional to solve migration issues
-    var barrageDirection: String?
+    @Published var barrageDirection: String {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // Barrage travel range - optional to solve migration issues
-    var barrageTravelRange: Double?
+    // 语音设置
+    @Published var speechEnabled: Bool {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // API Provider - optional to solve migration issues
-    var apiProvider: String?
+    // 提示词模板
+    @Published var promptTemplate: String {
+        didSet {
+            saveSettings()
+        }
+    }
     
-    // Azure OpenAI API settings - optional to solve migration issues
-    var azureEndpoint: String?
-    var azureDeploymentName: String?
-    var azureAPIVersion: String?
-    
-    // Ollama API settings - optional to solve migration issues
-    var ollamaServerAddress: String?
-    var ollamaServerPort: Int?
-    var useLocalOllama: Bool?
-    var ollamaModelName: String?
-    var ollamaAPIKey: String?
-    
-    // LM Studio API settings - optional to solve migration issues
-    var lmStudioServerAddress: String?
-    var lmStudioServerPort: Int?
-    
-    // General API settings - optional to solve migration issues
-    var apiModelName: String?
-    var apiKey: String?
-    
-    // 是否使用流式API
-    var useStreamingAPI: Bool?
+    // 测试结果
+    @Published var testResult: String = ""
+    @Published var isTesting: Bool = false
     
     init(
-        captureInterval: Double = 20.0,
-        barrageSpeed: Double = 1.0,
+        apiProvider: String = "openRouter",
+        apiModelName: String = "deepseek/deepseek-chat:free",
+        apiKey: String = "",
+        barrageSpeed: Double = 100.0,
+        barrageDirection: String = "rightToLeft",
         speechEnabled: Bool = true,
-        voiceIdentifier: String? = "com.apple.voice.siri.female.zh-CN",
-        barrageDirection: String? = "rightToLeft",
-        barrageTravelRange: Double? = 1.0,
-        apiProvider: String? = "Ollama API",
-        azureEndpoint: String? = "https://your-resource-name.openai.azure.com",
-        azureDeploymentName: String? = "gpt-4o",
-        azureAPIVersion: String? = "2023-12-01-preview",
-        ollamaServerAddress: String? = "http://127.0.0.1",
-        ollamaServerPort: Int? = 11434,
-        useLocalOllama: Bool? = true,
-        ollamaModelName: String? = "gemma3:4b",
-        ollamaAPIKey: String? = "",
-        lmStudioServerAddress: String? = "http://127.0.0.1",
-        lmStudioServerPort: Int? = 1234,
-        apiModelName: String? = "",
-        apiKey: String? = "",
-        useStreamingAPI: Bool? = true
+        promptTemplate: String = "你是一个桌面助手。请根据用户的输入生成10-15条积极、鼓励的句子。每个句子应该是完整的，包含标点符号。\n\n用户输入: {input}\n\n请用不同的表达方式生成鼓励性的句子，确保句子多样化且与用户输入相关。"
     ) {
-        self.captureInterval = captureInterval
-        self.barrageSpeed = barrageSpeed
-        self.speechEnabled = speechEnabled
-        self.voiceIdentifier = voiceIdentifier
-        self.barrageDirection = barrageDirection
-        self.barrageTravelRange = barrageTravelRange
-        self.apiProvider = apiProvider
-        self.azureEndpoint = azureEndpoint
-        self.azureDeploymentName = azureDeploymentName
-        self.azureAPIVersion = azureAPIVersion
-        self.ollamaServerAddress = ollamaServerAddress
-        self.ollamaServerPort = ollamaServerPort
-        self.useLocalOllama = useLocalOllama
-        self.ollamaModelName = ollamaModelName
-        self.ollamaAPIKey = ollamaAPIKey
-        self.lmStudioServerAddress = lmStudioServerAddress
-        self.lmStudioServerPort = lmStudioServerPort
-        self.apiModelName = apiModelName
-        self.apiKey = apiKey
-        self.useStreamingAPI = useStreamingAPI
+        // 从UserDefaults加载设置
+        self.apiProvider = UserDefaults.standard.string(forKey: "apiProvider") ?? apiProvider
+        self.apiModelName = UserDefaults.standard.string(forKey: "apiModelName") ?? apiModelName
+        self.apiKey = UserDefaults.standard.string(forKey: "apiKey") ?? apiKey
+        self.barrageSpeed = UserDefaults.standard.double(forKey: "barrageSpeed") > 0 ? UserDefaults.standard.double(forKey: "barrageSpeed") : barrageSpeed
+        self.barrageDirection = UserDefaults.standard.string(forKey: "barrageDirection") ?? barrageDirection
+        self.speechEnabled = UserDefaults.standard.object(forKey: "speechEnabled") != nil ? UserDefaults.standard.bool(forKey: "speechEnabled") : speechEnabled
+        self.promptTemplate = UserDefaults.standard.string(forKey: "promptTemplate") ?? promptTemplate
     }
     
-    // Get effective voice identifier
-    var effectiveVoiceIdentifier: String {
-        return voiceIdentifier ?? "com.apple.voice.siri.female.zh-CN"
+    // 保存设置到UserDefaults
+    private func saveSettings() {
+        UserDefaults.standard.set(apiProvider, forKey: "apiProvider")
+        UserDefaults.standard.set(apiModelName, forKey: "apiModelName")
+        UserDefaults.standard.set(apiKey, forKey: "apiKey")
+        UserDefaults.standard.set(barrageSpeed, forKey: "barrageSpeed")
+        UserDefaults.standard.set(barrageDirection, forKey: "barrageDirection")
+        UserDefaults.standard.set(speechEnabled, forKey: "speechEnabled")
+        UserDefaults.standard.set(promptTemplate, forKey: "promptTemplate")
     }
     
-    // Get effective API provider
+    // 获取有效的API提供者
     var effectiveAPIProvider: APIProvider {
-        guard let providerString = apiProvider,
-              let provider = APIProvider.allCases.first(where: { $0.rawValue == providerString }) else {
-            return .ollama
-        }
-        return provider
+        return APIProvider(rawValue: apiProvider) ?? .openRouter
     }
     
-    // Get effective API model name
+    // 获取有效的API模型名称
     var effectiveAPIModelName: String {
-        if let model = apiModelName, !model.isEmpty {
-            return model
-        }
-        return effectiveAPIProvider.defaultModel
+        return apiModelName
     }
     
-    // Get effective API key
+    // 获取有效的API密钥
     var effectiveAPIKey: String {
-        return apiKey ?? ""
+        return apiKey
     }
     
-    // Get effective Azure endpoint
-    var effectiveAzureEndpoint: String {
-        return azureEndpoint ?? "https://your-resource-name.openai.azure.com"
+    // 当前API提供者是否需要API密钥
+    var currentProviderRequiresAPIKey: Bool {
+        return effectiveAPIProvider.requiresAPIKey
     }
     
-    // Get effective Azure deployment name
-    var effectiveAzureDeploymentName: String {
-        return azureDeploymentName ?? "gpt-4o"
-    }
-    
-    // Get effective Azure API version
-    var effectiveAzureAPIVersion: String {
-        return azureAPIVersion ?? "2023-12-01-preview"
-    }
-    
-    // Get effective Ollama server address
-    var effectiveOllamaServerAddress: String {
-        return ollamaServerAddress ?? "http://127.0.0.1"
-    }
-    
-    // Get effective Ollama server port
-    var effectiveOllamaServerPort: Int {
-        return ollamaServerPort ?? 11434
-    }
-    
-    // Get effective use local Ollama setting
-    var effectiveUseLocalOllama: Bool {
-        return useLocalOllama ?? true
-    }
-    
-    // Get effective Ollama model name
-    var effectiveOllamaModelName: String {
-        return ollamaModelName ?? "gemma3:4b"
-    }
-    
-    // Get effective Ollama API key
-    var effectiveOllamaAPIKey: String {
-        return ollamaAPIKey ?? ""
-    }
-    
-    // Get effective LM Studio server address
-    var effectiveLMStudioServerAddress: String {
-        return lmStudioServerAddress ?? "http://127.0.0.1"
-    }
-    
-    // Get effective LM Studio server port
-    var effectiveLMStudioServerPort: Int {
-        return lmStudioServerPort ?? 1234
-    }
-    
-    // Get effective streaming API setting
-    var effectiveUseStreamingAPI: Bool {
-        return useStreamingAPI ?? true
+    // 获取格式化的提示词（替换{input}占位符）
+    func getFormattedPrompt(input: String) -> String {
+        return promptTemplate.replacingOccurrences(of: "{input}", with: input)
     }
 }

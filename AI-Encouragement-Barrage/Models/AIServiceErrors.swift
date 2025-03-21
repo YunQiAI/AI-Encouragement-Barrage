@@ -7,32 +7,23 @@
 
 import Foundation
 
-// Error types for AI services
-enum AIServiceError: Error, LocalizedError {
-    case imageConversionFailed
-    case invalidURL
-    case jsonEncodingFailed
+/// AI服务错误
+enum AIServiceError: LocalizedError {
+    case invalidInput
     case requestFailed
-    case invalidResponse
-    case apiError(message: String, statusCode: Int)
-    case unsupportedProvider(provider: String)
+    case networkError
+    case unknownError
     
     var errorDescription: String? {
         switch self {
-        case .imageConversionFailed:
-            return "Image conversion failed"
-        case .invalidURL:
-            return "Invalid URL"
-        case .jsonEncodingFailed:
-            return "JSON encoding failed"
+        case .invalidInput:
+            return "无效的输入内容"
         case .requestFailed:
-            return "Request failed"
-        case .invalidResponse:
-            return "Invalid response"
-        case .apiError(let message, let statusCode):
-            return "API error (\(statusCode)): \(message)"
-        case .unsupportedProvider(let provider):
-            return "Unsupported API provider: \(provider)"
+            return "请求失败"
+        case .networkError:
+            return "网络连接错误"
+        case .unknownError:
+            return "未知错误"
         }
     }
 }

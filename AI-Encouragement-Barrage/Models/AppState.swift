@@ -8,64 +8,136 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 class AppState: ObservableObject {
-    @Published var isRunning: Bool = false
-    @Published var isProcessing: Bool = false
-    @Published var lastEncouragement: String = ""
-    @Published var lastCaptureTime: Date? = nil
-    @Published var shouldTestBarrages: Bool = false
-    @Published var barrageService: BarrageService?
-    
-    // 当前选中的会话ID
-    @Published var selectedConversationID: UUID? = nil
-    
-    // 新增属性：控制屏幕监控
-    @Published var isScreenAnalysisActive: Bool = false {
+    // 弹幕显示状态
+    @Published var isBarrageActive: Bool = false {
         didSet {
-            // 保存到用户默认设置
-            UserDefaults.standard.set(isScreenAnalysisActive, forKey: "ScreenAnalysisActive")
+            UserDefaults.standard.set(isBarrageActive, forKey: "BarrageActive")
+            if isBarrageActive {
+                startBarrage()
+            } else {
+                stopBarrage()
+            }
+        }
+    }
+    
+    // 当前AI处理状态
+    @Published private(set) var isProcessing: Bool = false
+    
+    // 服务
+    private var barrageService: BarrageService?
+    private var barrageLibrary: BarrageLibrary?
+    private var aiService: AIService?
+    
+    // 设置
+    private var settings: AppSettings?
+    
+    // 弹幕定时器
+    private var barrageTimer: Timer?
+    
+    // 当前上下文
+    @Published var currentContext: String = ""
+    
+    init() {}
+    
+    func initialize(barrageService: BarrageService, aiService: AIService, settings: AppSettings) {
+        self.barrageService = barrageService
+        self.aiService = aiService
+        self.settings = settings
+        self.barrageLibrary = BarrageLibrary(aiService: aiService)
+        
+        // 加载保存的状态
+        if UserDefaults.standard.object(forKey: "BarrageActive") != nil {
+            isBarrageActive = UserDefaults.standard.bool(forKey: "BarrageActive")
+        }
+    }
+    
+    // 设置新的上下文并生成弹幕
+    func setContext(_ context: String) async {
+        guard let barrageLibrary = barrageLibrary else { return }
+        
+        // 在主线程上更新UI状态
+        await MainActor.run {
+            currentContext = context
+            isProcessing = true
             
-            // 记录日志
-            print("【日志1】屏幕监控状态变更: \(isScreenAnalysisActive)")
+            // 如果弹幕正在显示，先停止
+            if isBarrageActive {
+                stopBarrage()
+            }
+        }
+        
+        do {
+            // 设置新上下文会清空弹幕库并生成新弹幕
+            try await barrageLibrary.setContext(context)
+            
+            // 在主线程上更新UI状态和启动弹幕
+            await MainActor.run {
+                isProcessing = false
+                if isBarrageActive {
+                    startBarrage()
+                }
+            }
+        } catch {
+            // 在主线程上更新UI状态
+            await MainActor.run {
+                isProcessing = false
+                print("设置上下文失败: \(error.localizedDescription)")
+            }
         }
     }
     
-    func toggleRunning() {
-        isRunning.toggle()
-    }
-    
-    func setProcessing(_ isProcessing: Bool) {
-        self.isProcessing = isProcessing
-    }
-    
-    func updateLastEncouragement(_ text: String) {
-        self.lastEncouragement = text
-        self.lastCaptureTime = Date()
-    }
-    
-    func triggerTestBarrages() {
-        // 避免在视图更新中直接修改状态
-        Task { @MainActor in
-            shouldTestBarrages = true
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            shouldTestBarrages = false
+    // 开始显示弹幕
+    private func startBarrage() {
+        guard let barrageLibrary = barrageLibrary else { return }
+        
+        stopBarrage() // 确保先停止现有的定时器
+        
+        // 创建新的定时器，每0.8秒按顺序显示一条弹幕
+        barrageTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // 使用Task在主线程上执行MainActor隔离的方法
+            Task { @MainActor in
+                if let barrage = self.barrageLibrary?.getNextBarrage() {
+                    self.barrageService?.showBarrage(text: barrage.text)
+                }
+            }
         }
     }
     
-    // 选择会话
-    func selectConversation(_ id: UUID?) {
-        self.selectedConversationID = id
-    }
-    
-    // 新增方法：切换屏幕监控状态
-    func toggleScreenAnalysis() {
-        isScreenAnalysisActive.toggle()
-    }
-    
-    // 初始化时加载保存的设置
-    func loadSavedSettings() {
-        if UserDefaults.standard.object(forKey: "ScreenAnalysisActive") != nil {
-            isScreenAnalysisActive = UserDefaults.standard.bool(forKey: "ScreenAnalysisActive")
+    // 停止显示弹幕
+    private func stopBarrage() {
+        barrageTimer?.invalidate()
+        barrageTimer = nil
+        
+        // 确保在主线程上调用clearAllBarrages
+        if let service = barrageService {
+            service.clearAllBarrages()
         }
+    }
+    
+    // 切换弹幕显示状态
+    func toggleBarrage() {
+        isBarrageActive.toggle()
+        
+        // 如果开启弹幕但没有上下文，提示用户设置上下文
+        if isBarrageActive && currentContext.isEmpty {
+            print("请先设置上下文")
+            isBarrageActive = false
+        }
+    }
+    
+    // 更新设置
+    func updateSettings(_ newSettings: AppSettings) {
+        self.settings = newSettings
+        barrageService?.updateSettings(newSettings)
+    }
+    
+    deinit {
+        // 在deinit中安全地停止定时器
+        barrageTimer?.invalidate()
+        barrageTimer = nil
     }
 }
