@@ -31,7 +31,7 @@ class BarrageService: ObservableObject {
         self.settings = settings
         self.speechService = SpeechService()
         print("BarrageService: currentContext = \(appState.currentContext)")
-        self.barrageWindow = BarrageOverlayWindow(displayMode: settings.barrageDisplayMode)
+        self.barrageWindow = BarrageOverlayWindow()
         self.barrageWindow.show()
     }
     
@@ -94,6 +94,5 @@ class BarrageService: ObservableObject {
     /// 更新设置
     func updateSettings(_ newSettings: AppSettings) {
         self.settings = newSettings
-        barrageWindow.updateDisplayMode(newSettings.barrageDisplayMode)
     }
 }

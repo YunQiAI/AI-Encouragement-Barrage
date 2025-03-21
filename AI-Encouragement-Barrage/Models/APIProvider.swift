@@ -38,7 +38,7 @@ enum APIProvider: String, CaseIterable {
         case .lmStudio:
             return "default"
         case .openRouter:
-            return "openai/gpt-3.5-turbo"
+            return "deepseek/deepseek-chat:free"
         }
     }
     
@@ -76,7 +76,7 @@ enum APIProvider: String, CaseIterable {
         case .lmStudio:
             return "使用LM Studio中加载的模型"
         case .openRouter:
-            return "例如: openai/gpt-3.5-turbo"
+            return "例如: deepseek/deepseek-chat:free"
         }
     }
 }

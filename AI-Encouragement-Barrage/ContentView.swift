@@ -12,10 +12,11 @@ import AppKit
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var settings = AppSettings()
-    @State private var inputText: String = ""
+    @State private var inputText: String = "我正在努力学习编程"
     @State private var aiService: AIService?
     @State private var barrageService: BarrageService?
     @State private var showSettings: Bool = false
+    @State private var showPromptEditor: Bool = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -70,7 +71,7 @@ struct ContentView: View {
             }
             .padding(.horizontal)
             
-            // 语音开关和弹幕显示模式
+            // 语音开关和提示词编辑按钮
             HStack {
                 // 语音开关
                 Toggle(isOn: $settings.speechEnabled) {
@@ -86,16 +87,16 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                // 弹幕显示模式
-                Picker("显示模式", selection: $settings.barrageDisplayMode) {
-                    Text("分散模式").tag("scattered")
-                    Text("线性模式").tag("linear")
+                // 提示词编辑按钮
+                Button(action: {
+                    showPromptEditor.toggle()
+                }) {
+                    HStack {
+                        Image(systemName: "text.quote")
+                        Text("编辑提示词")
+                    }
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .frame(width: 180)
-                .onChange(of: settings.barrageDisplayMode) { _, _ in
-                    appState.updateSettings(settings)
-                }
+                .buttonStyle(.bordered)
             }
             .padding(.horizontal)
             
@@ -110,6 +111,34 @@ struct ContentView: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+            }
+            
+            // 提示词编辑区域
+            if showPromptEditor {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("提示词模板")
+                        .font(.headline)
+                    
+                    Text("使用 {input} 作为用户输入的占位符")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    TextEditor(text: $settings.promptTemplate)
+                        .font(.system(size: 12))
+                        .frame(height: 150)
+                        .border(Color.gray.opacity(0.2))
+                        .cornerRadius(4)
+                    
+                    Button("恢复默认提示词") {
+                        settings.promptTemplate = "你是一个桌面助手。请根据用户的输入生成100条简短、积极、鼓励的弹幕消息。\n每条消息不超过20个字，每条消息占一行。\n\n用户输入: {input}\n\n请用不同的表达方式生成鼓励性的弹幕消息，确保消息多样化且与用户输入相关。"
+                    }
+                    .buttonStyle(.bordered)
+                    .font(.caption)
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+                .padding(.horizontal)
             }
             
             // API设置区域
@@ -184,8 +213,9 @@ struct ContentView: View {
             
             Spacer()
         }
-        .frame(width: 400, height: showSettings ? 450 : 300)
+        .frame(width: 400, height: showPromptEditor ? 500 : (showSettings ? 450 : 300))
         .animation(.easeInOut, value: showSettings)
+        .animation(.easeInOut, value: showPromptEditor)
         .onAppear {
             initializeServices()
         }

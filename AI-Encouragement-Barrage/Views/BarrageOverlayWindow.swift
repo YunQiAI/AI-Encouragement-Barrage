@@ -8,26 +8,18 @@
 import SwiftUI
 import AppKit
 
-/// 弹幕显示模式
-enum BarrageDisplayMode: String {
-    case linear = "linear"       // 线性模式（传统弹幕）
-    case scattered = "scattered" // 分散模式（全屏随机位置）
-}
-
 /// 弹幕覆盖窗口
 class BarrageOverlayWindow {
     private var window: NSWindow?
     private var engine: BarrageEngine
-    private var displayMode: String
     
-    init(displayMode: String = "scattered") {
+    init() {
         // 获取主屏幕尺寸
         guard let screen = NSScreen.main else {
             fatalError("无法获取主屏幕")
         }
         
-        self.displayMode = displayMode
-        self.engine = BarrageEngine(screenSize: screen.frame.size, displayMode: displayMode)
+        self.engine = BarrageEngine(screenSize: screen.frame.size)
         setupWindow()
     }
     
@@ -84,15 +76,6 @@ class BarrageOverlayWindow {
         guard let screen = NSScreen.main else { return }
         window?.setFrame(screen.frame, display: true)
         engine.updateScreenSize(screen.frame.size)
-    }
-    
-    /// 更新显示模式
-    /// - Parameter mode: 新的显示模式
-    func updateDisplayMode(_ mode: String) {
-        if displayMode != mode {
-            displayMode = mode
-            engine.updateDisplayMode(mode)
-        }
     }
 }
 

@@ -19,16 +19,8 @@ class AIService {
     /// - Parameter text: 用户输入的文本
     /// - Returns: 生成的鼓励性文本
     func analyzeText(text: String) async throws -> String {
-        // 使用提示词构建请求
-        let prompt = """
-        你是一个桌面助手。请根据用户的输入生成100条简短、积极、鼓励的弹幕消息。
-        每条消息不超过20个字符，每条消息占一行。
-        
-        用户输入: \(text)
-        
-        请用不同的表达方式生成鼓励性的弹幕消息，确保消息多样化且与用户输入相关。
-        每一句都从是一个新的角度，要有创意，不要重复。
-        """
+        // 使用提示词模板构建请求
+        let prompt = settings.getFormattedPrompt(input: text)
         
         // 获取API设置
         let apiProvider = APIProvider(rawValue: settings.apiProvider) ?? .ollama

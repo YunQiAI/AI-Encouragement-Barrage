@@ -52,8 +52,8 @@ class AppSettings: ObservableObject {
         }
     }
     
-    // 弹幕显示模式
-    @Published var barrageDisplayMode: String {
+    // 提示词模板
+    @Published var promptTemplate: String {
         didSet {
             saveSettings()
         }
@@ -64,13 +64,13 @@ class AppSettings: ObservableObject {
     @Published var isTesting: Bool = false
     
     init(
-        apiProvider: String = "ollama",
-        apiModelName: String = "gemma:2b",
+        apiProvider: String = "openRouter",
+        apiModelName: String = "deepseek/deepseek-chat:free",
         apiKey: String = "",
         barrageSpeed: Double = 100.0,
         barrageDirection: String = "rightToLeft",
         speechEnabled: Bool = true,
-        barrageDisplayMode: String = "scattered"
+        promptTemplate: String = "你是一个桌面助手。请根据用户的输入生成10-15条积极、鼓励的句子。每个句子应该是完整的，包含标点符号。\n\n用户输入: {input}\n\n请用不同的表达方式生成鼓励性的句子，确保句子多样化且与用户输入相关。"
     ) {
         // 从UserDefaults加载设置
         self.apiProvider = UserDefaults.standard.string(forKey: "apiProvider") ?? apiProvider
@@ -79,7 +79,7 @@ class AppSettings: ObservableObject {
         self.barrageSpeed = UserDefaults.standard.double(forKey: "barrageSpeed") > 0 ? UserDefaults.standard.double(forKey: "barrageSpeed") : barrageSpeed
         self.barrageDirection = UserDefaults.standard.string(forKey: "barrageDirection") ?? barrageDirection
         self.speechEnabled = UserDefaults.standard.object(forKey: "speechEnabled") != nil ? UserDefaults.standard.bool(forKey: "speechEnabled") : speechEnabled
-        self.barrageDisplayMode = UserDefaults.standard.string(forKey: "barrageDisplayMode") ?? barrageDisplayMode
+        self.promptTemplate = UserDefaults.standard.string(forKey: "promptTemplate") ?? promptTemplate
     }
     
     // 保存设置到UserDefaults
@@ -90,12 +90,12 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(barrageSpeed, forKey: "barrageSpeed")
         UserDefaults.standard.set(barrageDirection, forKey: "barrageDirection")
         UserDefaults.standard.set(speechEnabled, forKey: "speechEnabled")
-        UserDefaults.standard.set(barrageDisplayMode, forKey: "barrageDisplayMode")
+        UserDefaults.standard.set(promptTemplate, forKey: "promptTemplate")
     }
     
     // 获取有效的API提供者
     var effectiveAPIProvider: APIProvider {
-        return APIProvider(rawValue: apiProvider) ?? .ollama
+        return APIProvider(rawValue: apiProvider) ?? .openRouter
     }
     
     // 获取有效的API模型名称
@@ -111,5 +111,10 @@ class AppSettings: ObservableObject {
     // 当前API提供者是否需要API密钥
     var currentProviderRequiresAPIKey: Bool {
         return effectiveAPIProvider.requiresAPIKey
+    }
+    
+    // 获取格式化的提示词（替换{input}占位符）
+    func getFormattedPrompt(input: String) -> String {
+        return promptTemplate.replacingOccurrences(of: "{input}", with: input)
     }
 }

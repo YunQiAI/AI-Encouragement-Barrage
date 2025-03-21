@@ -35,17 +35,26 @@ class BarrageEngine: ObservableObject {
     /// 轨道间隔
     private var trackHeight: CGFloat = 0
     
-    /// 显示模式
-    private var displayMode: String
+    /// 屏幕垂直可用区域（中间80%）
+    private var verticalUsableArea: (min: CGFloat, max: CGFloat) = (0, 0)
     
     /// 初始化
     /// - Parameters:
     ///   - screenSize: 屏幕尺寸
-    ///   - displayMode: 显示模式
-    init(screenSize: CGSize, displayMode: String = "scattered") {
+    init(screenSize: CGSize) {
         self.screenSize = screenSize
-        self.displayMode = displayMode
-        self.trackHeight = (screenSize.height - 100) / CGFloat(trackCount)
+        
+        // 修改：减小边距百分比，使用更多屏幕空间
+        let marginPercent: CGFloat = 0.05 // 上下各留出5%
+        self.verticalUsableArea = (
+            min: screenSize.height * marginPercent,
+            max: screenSize.height * (1 - marginPercent)
+        )
+        
+        // 计算轨道高度
+        let usableHeight = verticalUsableArea.max - verticalUsableArea.min
+        self.trackHeight = usableHeight / CGFloat(trackCount)
+        
         startAnimationTimer()
     }
     
@@ -58,48 +67,13 @@ class BarrageEngine: ObservableObject {
     /// 添加弹幕
     /// - Parameter text: 弹幕文本
     func addBarrage(text: String) {
-        if displayMode == "scattered" {
-            addScatteredBarrage(text: text)
-        } else {
-            addLinearBarrage(text: text)
-        }
-    }
-    
-    /// 设置移动速度
-    /// - Parameter speed: 速度值（默认2.0）
-    func setSpeed(_ speed: Double) {
-        self.speed = speed
-    }
-    
-    /// 清除所有弹幕
-    func clearAllBarrages() {
-        activeBarrages.removeAll()
-        barrageQueue.removeAll()
-    }
-    
-    /// 更新屏幕大小
-    /// - Parameter size: 新的屏幕尺寸
-    func updateScreenSize(_ size: CGSize) {
-        self.screenSize = size
-        self.trackHeight = (size.height - 100) / CGFloat(trackCount)
-    }
-    
-    /// 更新显示模式
-    /// - Parameter mode: 新的显示模式
-    func updateDisplayMode(_ mode: String) {
-        self.displayMode = mode
-    }
-    
-    // MARK: - 私有方法
-    
-    /// 添加线性弹幕（传统从右到左）
-    /// - Parameter text: 弹幕文本
-    private func addLinearBarrage(text: String) {
         // 获取可用轨道
         let trackIndex = getAvailableTrack()
         
-        // 计算弹幕Y坐标
-        let yPosition = 50 + (trackHeight * CGFloat(trackIndex))
+        // 修改：对Y位置添加随机偏移，使同一轨道内的弹幕高度也有变化
+        let baseYPosition = verticalUsableArea.min + (trackHeight * CGFloat(trackIndex))
+        let yOffset = CGFloat.random(in: -trackHeight * 0.2...trackHeight * 0.2)
+        let yPosition = baseYPosition + yOffset
         
         // 随机颜色
         let colors: [Color] = [.white, .yellow, .green, .cyan, .orange]
@@ -121,8 +95,7 @@ class BarrageEngine: ObservableObject {
             fontSize: fontSize,
             opacity: 1.0,
             createdAt: Date(),
-            trackIndex: trackIndex,
-            isStatic: false
+            trackIndex: trackIndex
         )
         
         // 标记轨道为已使用
@@ -133,63 +106,36 @@ class BarrageEngine: ObservableObject {
         }
     }
     
-    /// 添加分散弹幕（全屏随机位置）
-    /// - Parameter text: 弹幕文本
-    private func addScatteredBarrage(text: String) {
-        // 随机位置（避开屏幕边缘）
-        let margin: CGFloat = 50
-        let xPosition = CGFloat.random(in: (margin)...(screenSize.width - margin))
-        let yPosition = CGFloat.random(in: (margin)...(screenSize.height - margin))
-        
-        // 随机颜色
-        let colors: [Color] = [.white, .yellow, .green, .cyan, .orange, .pink, .purple]
-        let color = colors.randomElement() ?? .white
-        
-        // 随机字体大小
-        let fontSize = CGFloat.random(in: 16...24)
-        
-        let position = CGPoint(x: xPosition, y: yPosition)
-        
-        let barrage = BarrageItem(
-            id: UUID(),
-            text: text,
-            position: position,
-            color: color,
-            fontSize: fontSize,
-            opacity: 1.0,
-            createdAt: Date(),
-            trackIndex: -1, // 不使用轨道
-            isStatic: true  // 静态显示
-        )
-        
-        DispatchQueue.main.async {
-            self.activeBarrages.append(barrage)
-            
-            // 设置定时器，3秒后淡出并移除
-            Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
-                self?.fadeOutBarrage(barrage.id)
-            }
-        }
+    /// 设置移动速度
+    /// - Parameter speed: 速度值（默认2.0）
+    func setSpeed(_ speed: Double) {
+        self.speed = speed
     }
     
-    /// 淡出并移除弹幕
-    /// - Parameter id: 弹幕ID
-    private func fadeOutBarrage(_ id: UUID) {
-        // 找到对应的弹幕
-        guard let index = activeBarrages.firstIndex(where: { $0.id == id }) else { return }
-        
-        // 开始淡出动画
-        withAnimation(.easeOut(duration: 1.0)) {
-            activeBarrages[index].opacity = 0.0
-        }
-        
-        // 1秒后移除弹幕
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.activeBarrages.removeAll { $0.id == id }
-            }
-        }
+    /// 清除所有弹幕
+    func clearAllBarrages() {
+        activeBarrages.removeAll()
+        barrageQueue.removeAll()
     }
+    
+    /// 更新屏幕大小
+    /// - Parameter size: 新的屏幕尺寸
+    func updateScreenSize(_ size: CGSize) {
+        self.screenSize = size
+        
+        // 修改：与初始化保持一致，减小边距百分比
+        let marginPercent: CGFloat = 0.05 // 上下各留出5%
+        self.verticalUsableArea = (
+            min: size.height * marginPercent,
+            max: size.height * (1 - marginPercent)
+        )
+        
+        // 重新计算轨道高度
+        let usableHeight = verticalUsableArea.max - verticalUsableArea.min
+        self.trackHeight = usableHeight / CGFloat(trackCount)
+    }
+    
+    // MARK: - 私有方法
     
     /// 启动动画计时器
     private func startAnimationTimer() {
@@ -200,15 +146,33 @@ class BarrageEngine: ObservableObject {
     
     /// 获取可用轨道
     private func getAvailableTrack() -> Int {
-        // 检查是否有空闲轨道
+        // 修改：完全随机选择轨道，确保垂直分布更均匀
+        // 替代解决方案
+        var weights = Array(repeating: 1.0, count: trackCount)
+        let now = Date()
+
         for i in 0..<trackCount {
-            // 如果轨道未使用或者上次使用时间已经超过2秒
-            if tracks[i] == nil || Date().timeIntervalSince(tracks[i]!) > 2.0 {
+            if let lastUsed = tracks[i] {
+                let timeSince = now.timeIntervalSince(lastUsed)
+                if timeSince < 3.0 {
+                    weights[i] = max(0.1, timeSince / 3.0)
+                }
+            } else {
+                weights[i] = 2.0
+            }
+        }
+        
+        // 根据权重随机选择轨道
+        let totalWeight = weights.reduce(0, +)
+        var randomValue = Double.random(in: 0..<totalWeight)
+        
+        for i in 0..<trackCount {
+            randomValue -= weights[i]
+            if randomValue < 0 {
                 return i
             }
         }
         
-        // 如果所有轨道都在使用中，随机选择一个
         return Int.random(in: 0..<trackCount)
     }
     
@@ -218,17 +182,11 @@ class BarrageEngine: ObservableObject {
             var updatedBarrages: [BarrageItem] = []
             
             for var barrage in self.activeBarrages {
-                // 只移动非静态弹幕
-                if !barrage.isStatic {
-                    // 向左移动弹幕
-                    barrage.position.x -= self.speed
-                    
-                    // 如果弹幕还在屏幕内，保留它
-                    if barrage.position.x > -200 { // 考虑文本长度，给一些余量
-                        updatedBarrages.append(barrage)
-                    }
-                } else {
-                    // 静态弹幕直接保留
+                // 向左移动弹幕
+                barrage.position.x -= self.speed
+                
+                // 如果弹幕还在屏幕内，保留它
+                if barrage.position.x > -200 { // 考虑文本长度，给一些余量
                     updatedBarrages.append(barrage)
                 }
             }
@@ -248,5 +206,4 @@ struct BarrageItem: Identifiable {
     var opacity: Double
     let createdAt: Date
     let trackIndex: Int
-    let isStatic: Bool // 是否为静态弹幕（不移动）
 }

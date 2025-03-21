@@ -94,13 +94,13 @@ class AppState: ObservableObject {
         
         stopBarrage() // 确保先停止现有的定时器
         
-        // 创建新的定时器，每0.8秒随机显示一条弹幕
+        // 创建新的定时器，每0.8秒按顺序显示一条弹幕
         barrageTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             
             // 使用Task在主线程上执行MainActor隔离的方法
             Task { @MainActor in
-                if let barrage = self.barrageLibrary?.getRandomBarrage() {
+                if let barrage = self.barrageLibrary?.getNextBarrage() {
                     self.barrageService?.showBarrage(text: barrage.text)
                 }
             }
